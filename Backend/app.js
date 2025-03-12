@@ -1,11 +1,11 @@
 import express from 'express';
 import morgan from 'morgan';
-// import connect from './db/db.js';
+import connect from './db/db.config.js';
+import ownerRouter from './routes/owner.route.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
-connect();
-
+connect('Trintendo');
 const app = express();
 
 app.use(express.json());
@@ -14,7 +14,7 @@ app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(cors());
 
-// app.use('/users', userRouter);
+app.use('/owner', ownerRouter);
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
