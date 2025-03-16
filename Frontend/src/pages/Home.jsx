@@ -1,32 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useContext } from "react"
 import { Link } from "react-router-dom"
 import { restaurantService } from "../services/api"
+import { cartService } from "../services/customer-api"
+import { AuthContext } from "../context/AuthContext"
 import Navbar from "../components/Navbar"
 import Spinner from "../components/Spinner"
 import { Card, CardContent, CardFooter } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { ChevronRight, Clock, MapPin, ShieldCheck, Star, ThumbsUp } from 'lucide-react'
+import { ChevronRight, Clock, MapPin, ShieldCheck, Star, ThumbsUp, ShoppingBag } from "lucide-react"
+import { useToast } from "../hooks/use-toast"
 
 const Home = () => {
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [featuredRestaurants, setFeaturedRestaurants] = useState([])
+  const { user } = useContext(AuthContext)
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         const response = await restaurantService.getAllRestaurants()
         setRestaurants(response.data)
-        
+
         // Get featured restaurants (top 3 by rating or random if not enough)
         if (response.data.length > 0) {
-          const sortedRestaurants = [...response.data].sort((a, b) => 
-            (b.rating || 4.0) - (a.rating || 4.0)
-          ).slice(0, 3)
+          const sortedRestaurants = [...response.data].sort((a, b) => (b.rating || 4.0) - (a.rating || 4.0)).slice(0, 3)
           setFeaturedRestaurants(sortedRestaurants)
         }
       } catch (err) {
@@ -40,6 +43,38 @@ const Home = () => {
     fetchRestaurants()
   }, [])
 
+  const handleQuickOrder = async (restaurantId) => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login as a customer to place an order",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Example of adding a popular item to cart
+      await cartService.addToCart({
+        restaurantId,
+        itemId: "popular-item-id", // This would be a real item ID in production
+        quantity: 1,
+      })
+
+      toast({
+        title: "Added to cart",
+        description: "Popular item added to your cart",
+      })
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to add item to cart",
+        variant: "destructive",
+      })
+      console.error(err)
+    }
+  }
+
   if (loading) return <Spinner />
 
   return (
@@ -51,7 +86,7 @@ const Home = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-primary/70 z-10" />
           <div
             className="relative h-[400px] bg-cover bg-center"
-            style={{ backgroundImage: "url('/placeholder.svg?height=400&width=1920')" }}
+            style={{ backgroundImage: "url('/src/assets/react.svg')" }}
           >
             <div className="container mx-auto px-4 h-full flex items-center relative z-20">
               <div className="max-w-2xl text-white">
@@ -60,12 +95,12 @@ const Home = () => {
                   Order from your favorite local restaurants with free delivery on your first order
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Link to="/customer/login">
+                  <Link to={user ? "/restaurants" : "/customer/login"}>
                     <Button size="lg" className="bg-white text-primary hover:bg-white/90">
                       Order Now
                     </Button>
                   </Link>
-                  <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/20">
+                  <Button size="lg" variant="outline" className="text-gray-600 border-white hover:bg-white/20">
                     View Restaurants
                   </Button>
                 </div>
@@ -141,7 +176,10 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {featuredRestaurants.map((restaurant) => (
-                  <Card key={restaurant._id} className="overflow-hidden transition-all duration-300 hover:shadow-md border-primary/20">
+                  <Card
+                    key={restaurant._id}
+                    className="overflow-hidden transition-all duration-300 hover:shadow-md border-primary/20"
+                  >
                     <div className="relative">
                       <div className="relative h-48 w-full">
                         {restaurant.image ? (
@@ -177,10 +215,20 @@ const Home = () => {
                       <p className="text-sm text-muted-foreground mt-1">{restaurant.address}</p>
                     </CardContent>
 
-                    <CardFooter className="p-4 pt-0">
-                      <Button asChild className="w-full">
+                    <CardFooter className="p-4 pt-0 flex gap-2">
+                      <Button asChild className="flex-1">
                         <Link to={`/restaurants/${restaurant._id}/view`}>View Menu</Link>
                       </Button>
+                      {user && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleQuickOrder(restaurant._id)}
+                          title="Quick Order"
+                        >
+                          <ShoppingBag className="h-4 w-4" />
+                        </Button>
+                      )}
                     </CardFooter>
                   </Card>
                 ))}
@@ -232,10 +280,20 @@ const Home = () => {
                       <p className="text-sm text-muted-foreground mt-1">{restaurant.address}</p>
                     </CardContent>
 
-                    <CardFooter className="p-4 pt-0">
-                      <Button asChild className="w-full">
+                    <CardFooter className="p-4 pt-0 flex gap-2">
+                      <Button asChild className="flex-1">
                         <Link to={`/restaurants/${restaurant._id}/view`}>View Menu</Link>
                       </Button>
+                      {user && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleQuickOrder(restaurant._id)}
+                          title="Quick Order"
+                        >
+                          <ShoppingBag className="h-4 w-4" />
+                        </Button>
+                      )}
                     </CardFooter>
                   </Card>
                 ))}
@@ -274,3 +332,4 @@ const Home = () => {
 }
 
 export default Home
+

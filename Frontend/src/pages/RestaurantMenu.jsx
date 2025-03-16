@@ -60,7 +60,11 @@ useEffect(() => {
     setAddingToCart((prev) => ({ ...prev, [menuItemId]: true }))
 
     try {
-      const result = await addToCart(restaurant._id, menuItemId, 1)
+      const result = await addToCart({
+        restaurantId: restaurant._id,
+        menuItemId: menuItemId,
+        quantity: 1
+      })
 
       if (!result.success) {
         setError(result.message)

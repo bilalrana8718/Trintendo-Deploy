@@ -1,6 +1,6 @@
 "use client"
 
-import { useContext, useEffect } from "react"
+import { useContext, useEffect, useState, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { CartContext } from "../context/CartContext"
 import Navbar from "../components/Navbar"
@@ -9,38 +9,149 @@ import { Card, CardContent, CardFooter } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight } from "lucide-react"
+import { useToast } from "../hooks/use-toast"
 
 const Cart = () => {
-  const { cart, loading, error, removeFromCart, updateCartItem, clearCart, cartTotal, fetchCart } =
-    useContext(CartContext)
   const navigate = useNavigate()
+  const [isLocalLoading, setIsLocalLoading] = useState(true)
+  const initialFetchAttempted = useRef(false)
+  const { toast } = useToast()
 
+  // Get cart context safely
+  const cartContextValue = useContext(CartContext)
+
+  // Handle the case where CartContext might not be available
+  if (!cartContextValue && !initialFetchAttempted.current) {
+    console.error("CartContext is not available. Make sure CartProvider is wrapping this component.")
+    initialFetchAttempted.current = true
+    // We'll continue with default values below
+  }
+
+  const {
+    cart = { items: [] },
+    loading = false,
+    error = "",
+    cartTotal = 0,
+    fetchCart = async () => {},
+    updateCartItem = async () => {},
+    removeFromCart = async () => {},
+    clearCart = async () => {},
+  } = cartContextValue || {}
+
+  // Only attempt to fetch cart ONCE when component mounts
   useEffect(() => {
-    fetchCart()
-  }, [fetchCart])
+    const loadCart = async () => {
+      if (!initialFetchAttempted.current) {
+        initialFetchAttempted.current = true
+        try {
+          console.log("Cart component attempting initial fetch")
+          await fetchCart()
+        } catch (err) {
+          console.error("Error loading cart:", err)
+          toast({
+            title: "Error",
+            description: "Failed to load your cart. Please try again.",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLocalLoading(false)
+        }
+      } else {
+        // If we've already attempted to fetch, just update loading state
+        setIsLocalLoading(false)
+      }
+    }
+
+    loadCart()
+
+    // Empty dependency array - run only once on mount
+  }, [])
 
   const handleQuantityChange = async (itemId, currentQuantity, change) => {
-    const newQuantity = currentQuantity + change
-    if (newQuantity < 1) return
-
-    await updateCartItem(itemId, newQuantity)
+    try {
+      const newQuantity = currentQuantity + change
+      if (newQuantity < 1) return
+      await updateCartItem(itemId, newQuantity)
+      toast({
+        title: "Cart updated",
+        description: "Item quantity has been updated.",
+      })
+    } catch (err) {
+      console.error("Error updating quantity:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update item quantity. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleRemoveItem = async (itemId) => {
-    await removeFromCart(itemId)
+    try {
+      await removeFromCart(itemId)
+      toast({
+        title: "Item removed",
+        description: "Item has been removed from your cart.",
+      })
+    } catch (err) {
+      console.error("Error removing item:", err)
+      toast({
+        title: "Error",
+        description: "Failed to remove item. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleClearCart = async () => {
-    if (window.confirm("Are you sure you want to clear your cart?")) {
-      await clearCart()
+    try {
+      if (window.confirm("Are you sure you want to clear your cart?")) {
+        await clearCart()
+        toast({
+          title: "Cart cleared",
+          description: "All items have been removed from your cart.",
+        })
+      }
+    } catch (err) {
+      console.error("Error clearing cart:", err)
+      toast({
+        title: "Error",
+        description: "Failed to clear cart. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
   const handleCheckout = () => {
+    // Check if cart is empty before proceeding
+    if (!cart?.items?.length) {
+      toast({
+        title: "Empty cart",
+        description: "Please add items to your cart before checkout.",
+        variant: "destructive",
+      })
+      return
+    }
+
     navigate("/checkout")
   }
 
-  if (loading) return <Spinner />
+  // Ensure we have cart data before rendering
+  if (isLocalLoading || loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="container mx-auto flex justify-center items-center py-20">
+          <Spinner />
+        </div>
+      </>
+    )
+  }
+
+  // Get cart items safely
+  const cartItems = cart?.items || []
+  const cartTotalValue = cartTotal || 0
+  const restaurantName = cartItems.length > 0 ? cartItems[0]?.restaurantName || "Restaurant" : "Restaurant"
 
   return (
     <>
@@ -54,7 +165,7 @@ const Cart = () => {
           </Alert>
         )}
 
-        {cart.items.length === 0 ? (
+        {cartItems.length === 0 ? (
           <Card className="text-center p-8">
             <div className="flex flex-col items-center justify-center py-12">
               <div className="bg-muted rounded-full p-6 mb-4">
@@ -74,8 +185,7 @@ const Cart = () => {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-semibold">
-                      {cart.items.length} {cart.items.length === 1 ? "Item" : "Items"} from{" "}
-                      {cart.items[0]?.restaurantName}
+                      {cartItems.length} {cartItems.length === 1 ? "Item" : "Items"} from {restaurantName}
                     </h2>
                     <Button variant="outline" size="sm" onClick={handleClearCart}>
                       <Trash2 className="h-4 w-4 mr-2" />
@@ -84,7 +194,7 @@ const Cart = () => {
                   </div>
 
                   <div className="space-y-4">
-                    {cart.items.map((item) => (
+                    {cartItems.map((item) => (
                       <div key={item._id} className="flex border-b pb-4">
                         <div className="w-24 h-24 rounded overflow-hidden mr-4">
                           {item.image ? (
@@ -156,7 +266,7 @@ const Cart = () => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>${cartTotal.toFixed(2)}</span>
+                      <span>${cartTotalValue.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Delivery Fee</span>
@@ -164,13 +274,13 @@ const Cart = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Tax</span>
-                      <span>${(cartTotal * 0.08).toFixed(2)}</span>
+                      <span>${(cartTotalValue * 0.08).toFixed(2)}</span>
                     </div>
 
                     <div className="border-t pt-3 mt-3">
                       <div className="flex justify-between font-semibold text-lg">
                         <span>Total</span>
-                        <span>${(cartTotal + 2.99 + cartTotal * 0.08).toFixed(2)}</span>
+                        <span>${(cartTotalValue + 2.99 + cartTotalValue * 0.08).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

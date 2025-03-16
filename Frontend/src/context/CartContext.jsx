@@ -1,148 +1,221 @@
 "use client"
 
-import { createContext, useState, useEffect, useContext } from "react"
+import { createContext, useState, useEffect, useCallback, useRef } from "react"
 import { cartService } from "../services/customer-api"
-import { CustomerContext } from "./CustomerContext"
 
-export const CartContext = createContext()
+// Create the context with a default value
+const CartContext = createContext(null)
 
-export const CartProvider = ({ children }) => {
+// Separate the provider component
+function CartProvider({ children }) {
   const [cart, setCart] = useState({ items: [] })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [cartTotal, setCartTotal] = useState(0)
+  const isInitialMount = useRef(true)
+  const isFetching = useRef(false)
 
-  const { isAuthenticated } = useContext(CustomerContext)
+  const calculateTotal = useCallback((items = []) => {
+    return items.reduce((total, item) => total + (item.price || 0) * (item.quantity || 0), 0)
+  }, [])
 
-  // Fetch cart when customer logs in
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart()
-    } else {
-      // Clear cart when customer logs out
-      setCart({ items: [] })
-    }
-  }, [isAuthenticated])
+  const fetchCart = useCallback(async () => {
+    // Use ref to prevent concurrent fetches and infinite loops
+    if (isFetching.current) return
 
-  // Fetch customer's cart
-  const fetchCart = async () => {
-    if (!isAuthenticated) return
-
+    isFetching.current = true
     setLoading(true)
-    setError("")
+
     try {
-      const cartData = await cartService.getCart()
+      console.log("Fetching cart...")
+      const response = await cartService.getCart()
+      console.log("Cart response:", response)
+
+      const cartData = response || { items: [] }
+
+      if (!Array.isArray(cartData.items)) {
+        cartData.items = []
+      }
+
       setCart(cartData)
+      setCartTotal(calculateTotal(cartData.items))
+      return cartData
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch cart")
-      console.error("Failed to fetch cart:", err)
+      console.error("Error fetching cart:", err)
+      setError("Failed to load your cart. Please try again.")
+      return { items: [] }
     } finally {
       setLoading(false)
+      isFetching.current = false
     }
-  }
+  }, [calculateTotal])
 
-  // Add item to cart
-  const addToCart = async (restaurantId, menuItemId, quantity = 1) => {
-    setLoading(true)
-    setError("")
-    try {
-      const updatedCart = await cartService.addToCart({
-        restaurantId,
-        menuItemId,
-        quantity,
-      })
-      setCart(updatedCart)
-      return { success: true }
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to add item to cart")
-      return {
-        success: false,
-        message: err.response?.data?.message || "Failed to add item to cart",
+  const addToCart = useCallback(
+    async (item) => {
+      setLoading(true)
+      setError("")
+
+      try {
+        // Validate and transform input to match backend expectations
+        if (!item.restaurantId) {
+          console.error("Missing required field: restaurantId")
+          setError("Unable to add item: missing restaurant information")
+          setLoading(false)
+          return null
+        }
+
+        if (!item.itemId && !item.menuItemId) {
+          console.error("Missing required field: itemId or menuItemId")
+          setError("Unable to add item: missing item information")
+          setLoading(false)
+          return null
+        }
+
+        // Create a properly formatted object that matches backend expectations
+        const cartItemData = {
+          restaurantId: item.restaurantId,
+          menuItemId: item.menuItemId || item.itemId, // Support both naming conventions
+          quantity: item.quantity || 1,
+        }
+
+        console.log("Adding item to cart:", cartItemData)
+        const response = await cartService.addToCart(cartItemData)
+
+        console.log("Add to cart response:", response)
+
+        // Safely handle the response
+        const updatedCart = response || { items: [] }
+
+        // Safety check for items array
+        if (!Array.isArray(updatedCart.items)) {
+          updatedCart.items = []
+        }
+
+        setCart(updatedCart)
+        setCartTotal(calculateTotal(updatedCart.items))
+        return updatedCart
+      } catch (err) {
+        console.error("Error adding to cart:", err)
+        setError("Failed to add item to cart. Please try again.")
+        return null
+      } finally {
+        setLoading(false)
       }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Update cart item quantity
-  const updateCartItem = async (itemId, quantity) => {
-    setLoading(true)
-    setError("")
-    try {
-      const updatedCart = await cartService.updateCartItem({
-        itemId,
-        quantity,
-      })
-      setCart(updatedCart)
-      return { success: true }
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to update cart")
-      return {
-        success: false,
-        message: err.response?.data?.message || "Failed to update cart",
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Remove item from cart
-  const removeFromCart = async (itemId) => {
-    setLoading(true)
-    setError("")
-    try {
-      const updatedCart = await cartService.removeFromCart(itemId)
-      setCart(updatedCart)
-      return { success: true }
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to remove item from cart")
-      return {
-        success: false,
-        message: err.response?.data?.message || "Failed to remove item from cart",
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Clear cart
-  const clearCart = async () => {
-    setLoading(true)
-    setError("")
-    try {
-      await cartService.clearCart()
-      setCart({ items: [] })
-      return { success: true }
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to clear cart")
-      return {
-        success: false,
-        message: err.response?.data?.message || "Failed to clear cart",
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Calculate cart total
-  const cartTotal = cart.items.reduce((total, item) => total + item.price * item.quantity, 0)
-
-  return (
-    <CartContext.Provider
-      value={{
-        cart,
-        loading,
-        error,
-        addToCart,
-        updateCartItem,
-        removeFromCart,
-        clearCart,
-        fetchCart,
-        cartTotal,
-        itemCount: cart.items.length,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+    },
+    [calculateTotal],
   )
+
+  const updateCartItem = useCallback(
+    async (itemId, quantity) => {
+      setLoading(true)
+      setError("")
+
+      try {
+        // Create the update data object expected by the API
+        const updateData = { itemId, quantity }
+        const response = await cartService.updateCartItem(updateData)
+
+        // Handle response
+        const updatedCart = response || { items: [] }
+        if (!Array.isArray(updatedCart.items)) {
+          updatedCart.items = []
+        }
+
+        setCart(updatedCart)
+        setCartTotal(calculateTotal(updatedCart.items))
+        return updatedCart
+      } catch (err) {
+        console.error("Error updating cart item:", err)
+        setError("Failed to update item. Please try again.")
+        return null
+      } finally {
+        setLoading(false)
+      }
+    },
+    [calculateTotal],
+  )
+
+  const removeFromCart = useCallback(
+    async (itemId) => {
+      setLoading(true)
+      setError("")
+
+      try {
+        const response = await cartService.removeFromCart(itemId)
+
+        // Handle response
+        const updatedCart = response || { items: [] }
+        if (!Array.isArray(updatedCart.items)) {
+          updatedCart.items = []
+        }
+
+        setCart(updatedCart)
+        setCartTotal(calculateTotal(updatedCart.items))
+        return updatedCart
+      } catch (err) {
+        console.error("Error removing from cart:", err)
+        setError("Failed to remove item from cart. Please try again.")
+        return null
+      } finally {
+        setLoading(false)
+      }
+    },
+    [calculateTotal],
+  )
+
+  const clearCart = useCallback(async () => {
+    setLoading(true)
+    setError("")
+
+    try {
+      const response = await cartService.clearCart()
+
+      // Handle response
+      const emptyCart = response || { items: [] }
+      if (!Array.isArray(emptyCart.items)) {
+        emptyCart.items = []
+      }
+
+      setCart(emptyCart)
+      setCartTotal(0)
+      return emptyCart
+    } catch (err) {
+      console.error("Error clearing cart:", err)
+      setError("Failed to clear cart. Please try again.")
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Load cart ONLY ONCE on initial mount
+  useEffect(() => {
+    if (isInitialMount.current) {
+      console.log("Initial mount - fetching cart")
+      isInitialMount.current = false
+      fetchCart().catch((err) => {
+        console.error("Failed to fetch cart on mount:", err)
+      })
+    }
+
+    // No dependency on fetchCart to prevent loops
+  }, [])
+
+  const value = {
+    cart,
+    loading,
+    error,
+    cartTotal,
+    fetchCart,
+    addToCart,
+    updateCartItem,
+    removeFromCart,
+    clearCart,
+  }
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
+
+// Export both the context and provider separately
+export { CartContext, CartProvider }
 

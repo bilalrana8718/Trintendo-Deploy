@@ -19,30 +19,71 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Error handling interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle common errors
+    if (error.response) {
+      console.error("API Error Response:", error.response.status, error.response.data)
+
+      // Handle authentication errors
+      if (error.response.status === 401) {
+        localStorage.removeItem("customerToken")
+      }
+    } else if (error.request) {
+      console.error("API Error Request:", error.request)
+    } else {
+      console.error("API Error:", error.message)
+    }
+    return Promise.reject(error)
+  },
+)
+
 // Customer authentication services
 export const customerService = {
   // Register a new customer
   register: async (userData) => {
-    const response = await api.post("/customers/register", userData)
-    return response.data
+    try {
+      const response = await api.post("/customers/register", userData)
+      return response.data
+    } catch (error) {
+      console.error("Register error:", error)
+      throw error
+    }
   },
 
   // Login customer
   login: async (credentials) => {
-    const response = await api.post("/customers/login", credentials)
-    return response.data
+    try {
+      const response = await api.post("/customers/login", credentials)
+      return response.data
+    } catch (error) {
+      console.error("Login error:", error)
+      throw error
+    }
   },
 
   // Get current customer profile
   getProfile: async () => {
-    const response = await api.get("/customers/me")
-    return response.data
+    try {
+      const response = await api.get("/customers/me")
+      return response.data
+    } catch (error) {
+      console.error("Get profile error:", error)
+      throw error
+    }
   },
 
   // Update customer profile
   updateProfile: async (profileData) => {
-    const response = await api.patch("/customers/profile", profileData)
-    return response.data
+    try {
+      const response = await api.patch("/customers/profile", profileData)
+      return response.data
+    } catch (error) {
+      console.error("Update profile error:", error)
+      throw error
+    }
   },
 }
 
@@ -50,32 +91,70 @@ export const customerService = {
 export const cartService = {
   // Get customer's cart
   getCart: async () => {
-    const response = await api.get("/cart")
-    return response.data
+    try {
+      const response = await api.get("/cart")
+      return response.data
+    } catch (error) {
+      console.error("Get cart error:", error)
+      throw error
+    }
   },
 
   // Add item to cart
   addToCart: async (itemData) => {
-    const response = await api.post("/cart/add", itemData)
-    return response.data
+    try {
+      // Ensure we're sending a proper JSON object
+      if (typeof itemData !== "object") {
+        throw new Error("Invalid item data: must be an object")
+      }
+
+      // Log the exact data being sent
+      console.log("Adding item to cart (stringified):", JSON.stringify(itemData))
+
+      const response = await api.post("/cart/add", itemData)
+      return response.data
+    } catch (error) {
+      console.error("Add to cart error:", error)
+      throw error
+    }
   },
 
   // Update cart item quantity
   updateCartItem: async (updateData) => {
-    const response = await api.patch("/cart/update", updateData)
-    return response.data
+    try {
+      // Ensure we're sending a proper JSON object
+      if (typeof updateData !== "object") {
+        throw new Error("Invalid update data: must be an object")
+      }
+
+      const response = await api.patch("/cart/update", updateData)
+      return response.data
+    } catch (error) {
+      console.error("Update cart item error:", error)
+      throw error
+    }
   },
 
   // Remove item from cart
   removeFromCart: async (itemId) => {
-    const response = await api.delete(`/cart/item/${itemId}`)
-    return response.data
+    try {
+      const response = await api.delete(`/cart/item/${itemId}`)
+      return response.data
+    } catch (error) {
+      console.error("Remove from cart error:", error)
+      throw error
+    }
   },
 
   // Clear cart
   clearCart: async () => {
-    const response = await api.delete("/cart/clear")
-    return response.data
+    try {
+      const response = await api.delete("/cart/clear")
+      return response.data
+    } catch (error) {
+      console.error("Clear cart error:", error)
+      throw error
+    }
   },
 }
 
@@ -83,26 +162,46 @@ export const cartService = {
 export const orderService = {
   // Create a new order
   createOrder: async (orderData) => {
-    const response = await api.post("/orders", orderData)
-    return response.data
+    try {
+      const response = await api.post("/orders", orderData)
+      return response.data
+    } catch (error) {
+      console.error("Create order error:", error)
+      throw error
+    }
   },
 
   // Get customer's orders
   getOrders: async () => {
-    const response = await api.get("/orders/customer")
-    return response.data
+    try {
+      const response = await api.get("/orders/customer")
+      return response.data
+    } catch (error) {
+      console.error("Get orders error:", error)
+      throw error
+    }
   },
 
   // Get order details
   getOrderById: async (orderId) => {
-    const response = await api.get(`/orders/customer/${orderId}`)
-    return response.data
+    try {
+      const response = await api.get(`/orders/customer/${orderId}`)
+      return response.data
+    } catch (error) {
+      console.error("Get order by ID error:", error)
+      throw error
+    }
   },
 
   // Cancel order
   cancelOrder: async (orderId) => {
-    const response = await api.patch(`/orders/customer/${orderId}/cancel`)
-    return response.data
+    try {
+      const response = await api.patch(`/orders/customer/${orderId}/cancel`)
+      return response.data
+    } catch (error) {
+      console.error("Cancel order error:", error)
+      throw error
+    }
   },
 }
 
