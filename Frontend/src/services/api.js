@@ -22,6 +22,7 @@ api.interceptors.request.use(
 export const restaurantService = {
   getAllRestaurants: () => api.get("/restaurants"),
   getRestaurantById: (id) => api.get(`/restaurants/${id}`),
+  getRestaurantsByCuisine: (cuisine) => api.get(`/restaurants`, { params: { cuisine } }),
   getMyRestaurants: () => api.get("/restaurants/owner/me"),
   createRestaurant: (data) => api.post("/restaurants", data),
   updateRestaurant: (id, data) => api.patch(`/restaurants/${id}`, data),

@@ -240,7 +240,44 @@ const Home = () => {
         {/* All Restaurants */}
         <section className="py-16 bg-muted/30">
           <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold mb-8">All Restaurants</h2>
+            <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">All Restaurants</h2>
+              
+              <div className="mt-4 md:mt-0 w-full md:w-64">
+                <select 
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      restaurantService.getRestaurantsByCuisine(e.target.value)
+                        .then(response => {
+                          setRestaurants(response.data);
+                        })
+                        .catch(error => {
+                          console.error("Error fetching restaurants by cuisine:", error);
+                          toast({
+                            title: "Error",
+                            description: "Failed to load restaurants for this cuisine",
+                            variant: "destructive",
+                          });
+                        });
+                    } else {
+                      // Reset to all restaurants
+                      fetchRestaurants();
+                    }
+                  }}
+                >
+                  <option value="All">All Cuisines</option>
+                  <option value="Italian">Italian</option>
+                  <option value="Chinese">Chinese</option>
+                  <option value="Indian">Indian</option>
+                  <option value="Mexican">Mexican</option>
+                  <option value="Japanese">Japanese</option>
+                  <option value="Thai">Thai</option>
+                  <option value="American">American</option>
+                  <option value="Mediterranean">Mediterranean</option>
+                </select>
+              </div>
+            </div>
 
             {restaurants.length === 0 ? (
               <Card className="text-center p-8">
