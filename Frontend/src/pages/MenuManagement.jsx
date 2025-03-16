@@ -11,7 +11,8 @@ import { Textarea } from "../components/ui/textarea"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
 import { Badge } from "../components/ui/badge"
-import { ArrowLeft, Edit, Plus, Trash2 } from "lucide-react"
+import { Checkbox } from "../components/ui/checkbox"
+import { ArrowLeft, Edit, Plus, Trash2, Loader2, Image, DollarSign, Tag } from "lucide-react"
 
 const MenuManagement = () => {
   const [restaurant, setRestaurant] = useState(null)
@@ -25,6 +26,11 @@ const MenuManagement = () => {
     price: "",
     category: "",
     image: "",
+    isAvailable: true,
+  })
+  const [actionLoading, setActionLoading] = useState({
+    type: null, // 'add', 'update', 'delete'
+    itemId: null,
   })
 
   const { id } = useParams()
@@ -61,6 +67,7 @@ const MenuManagement = () => {
       price: "",
       category: "",
       image: "",
+      isAvailable: true,
     })
     setEditingItem(null)
     setShowAddForm(false)
@@ -68,6 +75,7 @@ const MenuManagement = () => {
 
   const handleAddItem = async (e) => {
     e.preventDefault()
+    setActionLoading({ type: "add", itemId: null })
 
     try {
       const response = await restaurantService.addMenuItem(id, formData)
@@ -76,11 +84,14 @@ const MenuManagement = () => {
     } catch (err) {
       setError("Failed to add menu item")
       console.error(err)
+    } finally {
+      setActionLoading({ type: null, itemId: null })
     }
   }
 
   const handleUpdateItem = async (e) => {
     e.preventDefault()
+    setActionLoading({ type: "update", itemId: editingItem._id })
 
     try {
       const response = await restaurantService.updateMenuItem(id, editingItem._id, formData)
@@ -89,6 +100,8 @@ const MenuManagement = () => {
     } catch (err) {
       setError("Failed to update menu item")
       console.error(err)
+    } finally {
+      setActionLoading({ type: null, itemId: null })
     }
   }
 
@@ -97,12 +110,15 @@ const MenuManagement = () => {
       return
     }
 
+    setActionLoading({ type: "delete", itemId })
     try {
       const response = await restaurantService.deleteMenuItem(id, itemId)
       setRestaurant(response.data)
     } catch (err) {
       setError("Failed to delete menu item")
       console.error(err)
+    } finally {
+      setActionLoading({ type: null, itemId: null })
     }
   }
 
@@ -114,6 +130,7 @@ const MenuManagement = () => {
       price: item.price,
       category: item.category,
       image: item.image || "",
+      isAvailable: item.isAvailable !== false, // Default to true if not specified
     })
     setShowAddForm(true)
   }
@@ -192,12 +209,14 @@ const MenuManagement = () => {
                         value={formData.description}
                         onChange={handleChange}
                         rows="2"
+                        placeholder="Describe your menu item"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label htmlFor="price" className="text-sm font-medium">
+                        <label htmlFor="price" className="text-sm font-medium flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
                           Price
                         </label>
                         <Input
@@ -213,7 +232,8 @@ const MenuManagement = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <label htmlFor="category" className="text-sm font-medium">
+                        <label htmlFor="category" className="text-sm font-medium flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
                           Category
                         </label>
                         <Input
@@ -221,13 +241,15 @@ const MenuManagement = () => {
                           name="category"
                           value={formData.category}
                           onChange={handleChange}
+                          placeholder="Appetizers, Main Course, Desserts, etc."
                           required
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="image" className="text-sm font-medium">
+                      <label htmlFor="image" className="text-sm font-medium flex items-center gap-2">
+                        <Image className="h-4 w-4 text-muted-foreground" />
                         Image URL
                       </label>
                       <Input
@@ -239,11 +261,43 @@ const MenuManagement = () => {
                       />
                     </div>
 
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="isAvailable"
+                        name="isAvailable"
+                        checked={formData.isAvailable}
+                        onCheckedChange={(checked) =>
+                          setFormData({
+                            ...formData,
+                            isAvailable: checked,
+                          })
+                        }
+                      />
+                      <label
+                        htmlFor="isAvailable"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Item is Available
+                      </label>
+                    </div>
+
                     <div className="flex gap-2">
                       <Button type="button" variant="outline" onClick={resetForm}>
                         Cancel
                       </Button>
-                      <Button type="submit">{editingItem ? "Update Item" : "Add Item"}</Button>
+                      <Button type="submit" disabled={actionLoading.type === "add" || actionLoading.type === "update"}>
+                        {actionLoading.type === "add" ||
+                        (actionLoading.type === "update" && actionLoading.itemId === editingItem?._id) ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {editingItem ? "Updating..." : "Adding..."}
+                          </>
+                        ) : editingItem ? (
+                          "Update Item"
+                        ) : (
+                          "Add Item"
+                        )}
+                      </Button>
                     </div>
                   </form>
                 </CardContent>
@@ -279,7 +333,14 @@ const MenuManagement = () => {
                         </div>
                       )}
                       <div>
-                        <h4 className="font-medium mb-1">{item.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{item.name}</h4>
+                          {item.isAvailable === false && (
+                            <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200">
+                              Unavailable
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex gap-4 items-center">
                           <span className="font-medium">${item.price.toFixed(2)}</span>
                           <Badge variant="outline">{item.category}</Badge>
@@ -288,12 +349,26 @@ const MenuManagement = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => startEditItem(item)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startEditItem(item)}
+                        disabled={actionLoading.type === "delete" && actionLoading.itemId === item._id}
+                      >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteItem(item._id)}>
-                        <Trash2 className="h-4 w-4 mr-1" />
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteItem(item._id)}
+                        disabled={actionLoading.type === "delete" && actionLoading.itemId === item._id}
+                      >
+                        {actionLoading.type === "delete" && actionLoading.itemId === item._id ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-1" />
+                        )}
                         Delete
                       </Button>
                     </div>

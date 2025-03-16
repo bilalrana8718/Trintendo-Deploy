@@ -9,29 +9,47 @@ import Spinner from "../components/Spinner"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { PlusCircle, Settings, Utensils } from "lucide-react"
+import { PlusCircle, Settings, Utensils, ShoppingBag, Clock } from 'lucide-react'
 
 const Dashboard = () => {
   const [restaurants, setRestaurants] = useState([])
+  const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [stats, setStats] = useState({
+    totalRestaurants: 0,
+    activeOrders: 0,
+    totalSales: 0
+  })
 
   const { user } = useContext(AuthContext)
 
   useEffect(() => {
-    const fetchRestaurants = async () => {
+    const fetchData = async () => {
       try {
-        const response = await restaurantService.getMyRestaurants()
-        setRestaurants(response.data)
+        // Fetch restaurants
+        const restaurantsResponse = await restaurantService.getMyRestaurants()
+        setRestaurants(restaurantsResponse.data)
+        
+        // Set basic stats
+        setStats({
+          totalRestaurants: restaurantsResponse.data.length,
+          activeOrders: 0, // This would come from a real API
+          totalSales: 0 // This would come from a real API
+        })
+        
+        // Fetch recent orders if we had that endpoint
+        // const ordersResponse = await orderService.getRecentOrders()
+        // setOrders(ordersResponse.data)
       } catch (err) {
-        setError("Failed to fetch restaurants")
+        setError("Failed to fetch dashboard data")
         console.error(err)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchRestaurants()
+    fetchData()
   }, [])
 
   if (loading) return <Spinner />
@@ -42,8 +60,8 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold">My Restaurants</h1>
-            <p className="text-muted-foreground mt-1">Manage your restaurant listings and menus</p>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome back, {user?.name || "Owner"}</p>
           </div>
           <Link to="/restaurants/create">
             <Button className="flex items-center gap-2">
@@ -53,11 +71,58 @@ const Dashboard = () => {
           </Link>
         </div>
 
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-primary/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Restaurants</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.totalRestaurants}</h3>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Utensils className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-blue-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Orders</p>
+                  <h3 className="text-3xl font-bold mt-1">{stats.activeOrders}</h3>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <ShoppingBag className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-green-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
+                  <h3 className="text-3xl font-bold mt-1">${stats.totalSales.toFixed(2)}</h3>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
+        <h2 className="text-2xl font-bold mb-6">My Restaurants</h2>
 
         {restaurants.length === 0 ? (
           <Card className="bg-muted/30 border-dashed">
@@ -136,4 +201,3 @@ const Dashboard = () => {
 }
 
 export default Dashboard
-

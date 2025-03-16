@@ -8,18 +8,27 @@ import Spinner from "../components/Spinner"
 import { Card, CardContent, CardFooter } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { ChevronRight, Clock, MapPin, ShieldCheck, Star } from "lucide-react"
+import { ChevronRight, Clock, MapPin, ShieldCheck, Star, ThumbsUp } from 'lucide-react'
 
 const Home = () => {
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [featuredRestaurants, setFeaturedRestaurants] = useState([])
 
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         const response = await restaurantService.getAllRestaurants()
         setRestaurants(response.data)
+        
+        // Get featured restaurants (top 3 by rating or random if not enough)
+        if (response.data.length > 0) {
+          const sortedRestaurants = [...response.data].sort((a, b) => 
+            (b.rating || 4.0) - (a.rating || 4.0)
+          ).slice(0, 3)
+          setFeaturedRestaurants(sortedRestaurants)
+        }
       } catch (err) {
         setError("Failed to fetch restaurants")
         console.error(err)
@@ -51,9 +60,11 @@ const Home = () => {
                   Order from your favorite local restaurants with free delivery on your first order
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" className="bg-white text-primary hover:bg-white/90">
-                    Order Now
-                  </Button>
+                  <Link to="/customer/login">
+                    <Button size="lg" className="bg-white text-primary hover:bg-white/90">
+                      Order Now
+                    </Button>
+                  </Link>
                   <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/20">
                     View Restaurants
                   </Button>
@@ -122,6 +133,67 @@ const Home = () => {
               </Alert>
             )}
 
+            {featuredRestaurants.length === 0 ? (
+              <Card className="text-center p-8">
+                <h3 className="text-xl font-semibold">No featured restaurants available yet</h3>
+                <p className="my-2 text-muted-foreground">Check back soon for new restaurants</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {featuredRestaurants.map((restaurant) => (
+                  <Card key={restaurant._id} className="overflow-hidden transition-all duration-300 hover:shadow-md border-primary/20">
+                    <div className="relative">
+                      <div className="relative h-48 w-full">
+                        {restaurant.image ? (
+                          <img
+                            src={restaurant.image || "/placeholder.svg"}
+                            alt={restaurant.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-muted flex items-center justify-center">
+                            <p className="text-muted-foreground">No Image</p>
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3">
+                          <div className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium border border-primary/20">
+                            <ThumbsUp className="h-3 w-3 mr-1 inline fill-primary text-primary" />
+                            Featured
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-xl font-semibold">{restaurant.name}</h3>
+                        <div className="flex items-center bg-primary/10 px-2 py-1 rounded">
+                          <span className="text-sm font-medium">{restaurant.rating || "4.5"}</span>
+                          <Star className="h-3 w-3 ml-1 fill-yellow-400 text-yellow-400" />
+                        </div>
+                      </div>
+
+                      <p className="text-muted-foreground">{restaurant.cuisine}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{restaurant.address}</p>
+                    </CardContent>
+
+                    <CardFooter className="p-4 pt-0">
+                      <Button asChild className="w-full">
+                        <Link to={`/restaurants/${restaurant._id}/view`}>View Menu</Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* All Restaurants */}
+        <section className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-bold mb-8">All Restaurants</h2>
+
             {restaurants.length === 0 ? (
               <Card className="text-center p-8">
                 <h3 className="text-xl font-semibold">No restaurants available yet</h3>
@@ -151,7 +223,7 @@ const Home = () => {
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="text-xl font-semibold">{restaurant.name}</h3>
                         <div className="flex items-center bg-primary/10 px-2 py-1 rounded">
-                          <span className="text-sm font-medium">4.5</span>
+                          <span className="text-sm font-medium">{restaurant.rating || "4.5"}</span>
                           <Star className="h-3 w-3 ml-1 fill-yellow-400 text-yellow-400" />
                         </div>
                       </div>
@@ -162,7 +234,7 @@ const Home = () => {
 
                     <CardFooter className="p-4 pt-0">
                       <Button asChild className="w-full">
-                        <Link to={`/restaurants/${restaurant._id}`}>View Menu</Link>
+                        <Link to={`/restaurants/${restaurant._id}/view`}>View Menu</Link>
                       </Button>
                     </CardFooter>
                   </Card>
@@ -202,4 +274,3 @@ const Home = () => {
 }
 
 export default Home
-

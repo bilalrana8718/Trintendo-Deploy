@@ -2,14 +2,14 @@
 
 import { useState, useContext } from "react"
 import { Link, useNavigate, useLocation } from "react-router-dom"
-import { AuthContext } from "../context/AuthContext"
+import { CustomerContext } from "../context/CustomerContext"
 import Navbar from "../components/Navbar"
 import { Input } from "../components/ui/input"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { Loader2, ChevronRight, Mail, Lock } from 'lucide-react'
+import { Loader2, ChevronRight, Mail, Lock } from "lucide-react"
 
-const Login = () => {
+const CustomerLogin = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -17,12 +17,12 @@ const Login = () => {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const { login } = useContext(AuthContext)
+  const { login } = useContext(CustomerContext)
   const navigate = useNavigate()
   const location = useLocation()
-  
-  // Get redirect path from location state or default to dashboard
-  const from = location.state?.from || "/dashboard"
+
+  // Get redirect path from location state or default to home
+  const from = location.state?.from || "/"
 
   const handleChange = (e) => {
     setFormData({
@@ -47,7 +47,6 @@ const Login = () => {
       }
     } catch (err) {
       setError("An error occurred. Please try again.")
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -77,8 +76,8 @@ const Login = () => {
                     <ChevronRight className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Manage Your Restaurants</h3>
-                    <p className="text-sm text-white/80">Update menus and track orders</p>
+                    <h3 className="font-medium">Discover Local Restaurants</h3>
+                    <p className="text-sm text-white/80">Find the best food in your area</p>
                   </div>
                 </div>
 
@@ -87,8 +86,8 @@ const Login = () => {
                     <ChevronRight className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Grow Your Business</h3>
-                    <p className="text-sm text-white/80">Reach more customers online</p>
+                    <h3 className="font-medium">Fast Delivery</h3>
+                    <p className="text-sm text-white/80">Hot food delivered to your door</p>
                   </div>
                 </div>
 
@@ -97,8 +96,8 @@ const Login = () => {
                     <ChevronRight className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-medium">Exclusive Insights</h3>
-                    <p className="text-sm text-white/80">Get detailed analytics and reports</p>
+                    <h3 className="font-medium">Exclusive Deals</h3>
+                    <p className="text-sm text-white/80">Special offers just for you</p>
                   </div>
                 </div>
               </div>
@@ -108,8 +107,8 @@ const Login = () => {
           {/* Right Column - Login Form */}
           <div className="p-8 flex flex-col justify-center">
             <div className="mb-8 text-center md:text-left">
-              <h1 className="text-3xl font-bold mb-2">Restaurant Owner Login</h1>
-              <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
+              <h1 className="text-3xl font-bold mb-2">Customer Login</h1>
+              <p className="text-muted-foreground">Enter your credentials to access your account</p>
             </div>
 
             {error && (
@@ -142,7 +141,7 @@ const Login = () => {
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     Password
                   </label>
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                  <Link to="/customer/forgot-password" className="text-sm text-primary hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -171,7 +170,7 @@ const Login = () => {
               <div className="text-center mt-6">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
-                  <Link to="/register" className="text-primary font-medium hover:underline">
+                  <Link to="/customer/register" className="text-primary font-medium hover:underline">
                     Create an account
                   </Link>
                 </p>
@@ -184,4 +183,5 @@ const Login = () => {
   )
 }
 
-export default Login
+export default CustomerLogin
+

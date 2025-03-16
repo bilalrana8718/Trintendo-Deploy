@@ -11,7 +11,7 @@ import { Textarea } from "../components/ui/textarea"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
 import { Checkbox } from "../components/ui/checkbox"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2, Store, MapPin, Phone, Utensils, Image } from 'lucide-react'
 
 const RestaurantDetails = () => {
   const [restaurant, setRestaurant] = useState(null)
@@ -27,6 +27,7 @@ const RestaurantDetails = () => {
     isOpen: true,
   })
   const [updating, setUpdating] = useState(false)
+  const [updateSuccess, setUpdateSuccess] = useState(false)
 
   const { id } = useParams()
   const navigate = useNavigate()
@@ -67,14 +68,20 @@ const RestaurantDetails = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
+    setUpdateSuccess(false)
     setUpdating(true)
 
     try {
       const response = await restaurantService.updateRestaurant(id, formData)
       setRestaurant(response.data)
-      alert("Restaurant updated successfully")
+      setUpdateSuccess(true)
+      
+      // Reset success message after 3 seconds
+      setTimeout(() => {
+        setUpdateSuccess(false)
+      }, 3000)
     } catch (err) {
-      setError("Failed to update restaurant")
+      setError(err.response?.data?.message || "Failed to update restaurant")
       console.error(err)
     } finally {
       setUpdating(false)
@@ -112,6 +119,12 @@ const RestaurantDetails = () => {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+        
+        {updateSuccess && (
+          <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+            <AlertDescription>Restaurant updated successfully!</AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>
@@ -121,7 +134,8 @@ const RestaurantDetails = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">
+                <label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
+                  <Store className="h-4 w-4 text-muted-foreground" />
                   Restaurant Name
                 </label>
                 <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
@@ -141,28 +155,32 @@ const RestaurantDetails = () => {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="address" className="text-sm font-medium">
+                <label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
                   Address
                 </label>
                 <Input id="address" name="address" value={formData.address} onChange={handleChange} required />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="phone" className="text-sm font-medium">
+                <label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
                   Phone Number
                 </label>
                 <Input id="phone" name="phone" value={formData.phone} onChange={handleChange} required />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="cuisine" className="text-sm font-medium">
+                <label htmlFor="cuisine" className="text-sm font-medium flex items-center gap-2">
+                  <Utensils className="h-4 w-4 text-muted-foreground" />
                   Cuisine Type
                 </label>
                 <Input id="cuisine" name="cuisine" value={formData.cuisine} onChange={handleChange} required />
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="image" className="text-sm font-medium">
+                <label htmlFor="image" className="text-sm font-medium flex items-center gap-2">
+                  <Image className="h-4 w-4 text-muted-foreground" />
                   Image URL
                 </label>
                 <Input
@@ -213,4 +231,3 @@ const RestaurantDetails = () => {
 }
 
 export default RestaurantDetails
-
