@@ -1,11 +1,29 @@
-import 'dotenv/config'
-import http from 'http';
-import app from './app.js';
+import express from "express"
+import mongoose from "mongoose"
+import cors from "cors"
+import dotenv from "dotenv"
+import authRoutes from "./routes/auth.js"
+import restaurantRoutes from "./routes/restaurants.js"
 
-const port = process.env.PORT || 3000;
+dotenv.config()
 
-const server = http.createServer(app);
+const app = express()
+const PORT = process.env.PORT || 5000
 
-server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Middleware
+app.use(express.json())
+app.use(cors())
+
+// Routes
+app.use("/api/auth", authRoutes)
+app.use("/api/restaurants", restaurantRoutes)
+
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log("Connected to MongoDB")
+    app.listen(PORT, () => console.log(`Server running on port: ${PORT}`))
+  })
+  .catch((error) => console.log("MongoDB connection error:", error.message))
+
