@@ -27,6 +27,15 @@ export const createRestaurant = async (req, res) => {
 // Get all restaurants
 export const getAllRestaurants = async (req, res) => {
   try {
+    const { cuisine } = req.query
+    if (cuisine){
+      if (cuisine == "All"){
+        const restaurants = await Restaurant.find().sort({ createdAt: -1 })
+        return res.status(200).json(restaurants)
+      }
+      const restaurants = await Restaurant.find({ cuisine: { $regex: new RegExp(cuisine, "i") } }).sort({ createdAt: -1 })
+      return res.status(200).json(restaurants)
+    }
     const restaurants = await Restaurant.find().sort({ createdAt: -1 })
     res.status(200).json(restaurants)
   } catch (error) {
