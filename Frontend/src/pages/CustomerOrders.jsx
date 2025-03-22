@@ -16,12 +16,12 @@ const CustomerOrders = () => {
 
   useEffect(() => {
     const loadOrders = async () => {
-      await fetchOrders();
+      let jk = await fetchOrders();
       setIsLoading(false);
     };
 
     loadOrders();
-  }, [fetchOrders]);
+  }, []);
 
   // Helper function to get status badge color
   const getStatusColor = (status) => {

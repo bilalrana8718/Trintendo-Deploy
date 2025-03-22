@@ -1,34 +1,39 @@
-"use client"
+"use client";
 
-import { useContext, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { AuthContext } from "../context/AuthContext"
-import { CustomerContext } from "../context/CustomerContext"
-import { Button } from "./ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu"
-import { Switch } from "./ui/switch"
-import { Label } from "./ui/label"
-import { ShoppingCart, User, ChevronDown } from "lucide-react"
+import { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import { CustomerContext } from "../context/CustomerContext";
+import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
+import { ShoppingCart, User, ChevronDown } from "lucide-react";
 
 const Navbar = () => {
-  const { user, logout } = useContext(AuthContext)
-  const { customer, logout: customerLogout } = useContext(CustomerContext)
-  const navigate = useNavigate()
-  const [isCustomer, setIsCustomer] = useState(true)
+  const { user, logout } = useContext(AuthContext);
+  const { customer, logout: customerLogout } = useContext(CustomerContext);
+  const navigate = useNavigate();
+  const [isCustomer, setIsCustomer] = useState(true);
 
   const handleLogout = () => {
     if (isCustomer && customer) {
-      customerLogout()
-      navigate("/customer/login")
+      customerLogout();
+      navigate("/customer/login");
     } else if (user) {
-      logout()
-      navigate("/login")
+      logout();
+      navigate("/login");
     }
-  }
+  };
 
   const toggleUserType = () => {
-    setIsCustomer(!isCustomer)
-  }
+    setIsCustomer(!isCustomer);
+  };
 
   return (
     <nav className="sticky top-0 z-50 flex justify-between items-center py-4 px-8 bg-white shadow-sm">
@@ -58,7 +63,10 @@ const Navbar = () => {
                     My Orders
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer"
+                >
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -92,11 +100,14 @@ const Navbar = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/orders" className="cursor-pointer">
+                  <Link to="/restaurant/orders" className="cursor-pointer">
                     Orders
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer"
+                >
                   Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -105,29 +116,50 @@ const Navbar = () => {
         ) : (
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <Label htmlFor="user-type" className={isCustomer ? "text-primary font-medium" : "text-muted-foreground"}>
+              <Label
+                htmlFor="user-type"
+                className={
+                  isCustomer
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground"
+                }
+              >
                 Customer
               </Label>
-              <Switch id="user-type" checked={!isCustomer} onCheckedChange={toggleUserType} />
-              <Label htmlFor="user-type" className={!isCustomer ? "text-primary font-medium" : "text-muted-foreground"}>
+              <Switch
+                id="user-type"
+                checked={!isCustomer}
+                onCheckedChange={toggleUserType}
+              />
+              <Label
+                htmlFor="user-type"
+                className={
+                  !isCustomer
+                    ? "text-primary font-medium"
+                    : "text-muted-foreground"
+                }
+              >
                 Restaurant Owner
               </Label>
             </div>
 
             <div className="flex gap-2">
               <Button variant="outline" asChild>
-                <Link to={isCustomer ? "/customer/login" : "/login"}>Login</Link>
+                <Link to={isCustomer ? "/customer/login" : "/login"}>
+                  Login
+                </Link>
               </Button>
               <Button asChild>
-                <Link to={isCustomer ? "/customer/register" : "/register"}>Register</Link>
+                <Link to={isCustomer ? "/customer/register" : "/register"}>
+                  Register
+                </Link>
               </Button>
             </div>
           </div>
         )}
       </div>
     </nav>
-  )
-}
+  );
+};
 
-export default Navbar
-
+export default Navbar;

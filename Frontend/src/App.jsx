@@ -27,6 +27,7 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import CustomerOrders from "./pages/CustomerOrders";
 import OrderDetails from "./pages/OrderDetails";
+import RestaurantOrdersDashboard from "./pages/RestaurantOrdersDashboard";
 
 function App() {
   return (
@@ -123,6 +124,14 @@ function App() {
                     <CustomerRoute>
                       <OrderDetails />
                     </CustomerRoute>
+                  }
+                />
+                <Route
+                  path="/restaurant/orders"
+                  element={
+                    <PrivateRoute>
+                      <RestaurantOrdersDashboard />
+                    </PrivateRoute>
                   }
                 />
 

@@ -13,18 +13,15 @@ export const CustomerProvider = ({ children }) => {
   useEffect(() => {
     const checkCustomerLoggedIn = async () => {
       try {
-        console.log("Checking if customer is logged in...");
         const token = localStorage.getItem("customerToken");
         if (token) {
           const customerData = await customerService.getProfile();
-          console.log("Customer data fetched:", customerData);
           setCustomer(customerData);
         }
       } catch (err) {
         console.error("Failed to fetch customer profile:", err);
         localStorage.removeItem("customerToken");
       } finally {
-        console.log("Setting loading to false");
         setLoading(false);
       }
     };

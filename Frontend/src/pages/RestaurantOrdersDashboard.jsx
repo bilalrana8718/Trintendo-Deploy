@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { orderService } from "../services/order-api"; // Make sure this has getRestaurantOrders & updateOrderStatus functions
+import { restaurantService } from "../services/api"; // Make sure this has getRestaurantOrders & updateOrderStatus functions
 import Navbar from "../components/Navbar";
 import Spinner from "../components/Spinner";
 import { Card, CardContent } from "../components/ui/card";
@@ -18,8 +18,8 @@ const RestaurantOrdersDashboard = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const ordersData = await orderService.getRestaurantOrders();
-        setOrders(ordersData);
+        const ordersData = await restaurantService.getRestaurantOrders();
+        setOrders(ordersData.data);
       } catch (err) {
         console.error("Failed to fetch orders", err);
         setError("Failed to load orders.");
@@ -33,13 +33,13 @@ const RestaurantOrdersDashboard = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      const updatedOrder = await orderService.updateOrderStatus(orderId, {
+      const updatedOrder = await restaurantService.updateOrderStatus(orderId, {
         status: newStatus,
       });
       // Update order in the list locally
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
-          order._id === orderId ? updatedOrder : order
+          order._id === orderId ? updatedOrder.data : order
         )
       );
       setNotification(`Order updated to ${newStatus}.`);
@@ -56,7 +56,6 @@ const RestaurantOrdersDashboard = () => {
       <Navbar />
       <div className="container mx-auto p-4">
         <h1 className="text-3xl font-bold mb-4">Restaurant Orders Dashboard</h1>
-
         {notification && (
           <Alert variant="success" className="mb-4">
             {notification}
@@ -67,7 +66,6 @@ const RestaurantOrdersDashboard = () => {
             {error}
           </Alert>
         )}
-
         {orders.length === 0 ? (
           <div className="text-center text-gray-500">No orders available.</div>
         ) : (
