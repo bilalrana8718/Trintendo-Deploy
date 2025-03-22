@@ -1,27 +1,32 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
-import PrivateRoute from "./components/PrivateRoute"
-import CustomerRoute from "./components/CustomerRoute"
-import { AuthProvider } from "./context/AuthContext"
-import { CustomerProvider } from "./context/CustomerContext"
-import { CartProvider } from "./context/CartContext"
-import { OrderProvider } from "./context/OrderContext"
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import PrivateRoute from "./components/PrivateRoute";
+import CustomerRoute from "./components/CustomerRoute";
+import { AuthProvider } from "./context/AuthContext";
+import { CustomerProvider } from "./context/CustomerContext";
+import { CartProvider } from "./context/CartContext";
+import { OrderProvider } from "./context/OrderContext";
 
 // Pages
-import Login from "./pages/Login"
-import Register from "./pages/Register"
-import Dashboard from "./pages/Dashboard"
-import CreateRestaurant from "./pages/CreateRestaurant"
-import RestaurantDetails from "./pages/RestaurantDetails"
-import MenuManagement from "./pages/MenuManagement"
-import Home from "./pages/Home"
-import CustomerLogin from "./pages/CustomerLogin"
-import CustomerRegister from "./pages/CustomerRegister"
-import RestaurantMenu from "./pages/RestaurantMenu"
-import Cart from "./pages/Cart"
-import Checkout from "./pages/Checkout"
-import OrderSuccess from "./pages/OrderSuccess"
-import CustomerOrders from "./pages/CustomerOrders"
-import OrderDetails from "./pages/OrderDetails"
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import CreateRestaurant from "./pages/CreateRestaurant";
+import RestaurantDetails from "./pages/RestaurantDetails";
+import MenuManagement from "./pages/MenuManagement";
+import Home from "./pages/Home";
+import CustomerLogin from "./pages/CustomerLogin";
+import CustomerRegister from "./pages/CustomerRegister";
+import RestaurantMenu from "./pages/RestaurantMenu";
+import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import OrderSuccess from "./pages/OrderSuccess";
+import CustomerOrders from "./pages/CustomerOrders";
+import OrderDetails from "./pages/OrderDetails";
 
 function App() {
   return (
@@ -72,8 +77,14 @@ function App() {
 
                 {/* Customer routes */}
                 <Route path="/customer/login" element={<CustomerLogin />} />
-                <Route path="/customer/register" element={<CustomerRegister />} />
-                <Route path="/restaurants/:id/view" element={<RestaurantMenu />} />
+                <Route
+                  path="/customer/register"
+                  element={<CustomerRegister />}
+                />
+                <Route
+                  path="/restaurants/:id/view"
+                  element={<RestaurantMenu />}
+                />
                 <Route
                   path="/cart"
                   element={
@@ -99,7 +110,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/orders"
+                  path="/customer/orders"
                   element={
                     <CustomerRoute>
                       <CustomerOrders />
@@ -122,8 +133,7 @@ function App() {
         </CustomerProvider>
       </AuthProvider>
     </Router>
-  )
+  );
 }
 
-export default App
-
+export default App;
