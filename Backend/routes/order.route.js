@@ -6,6 +6,7 @@ import {
   cancelOrder,
   getRestaurantOrders,
   updateOrderStatus,
+  addOrderReview
 } from "../controllers/order.controller.js";
 import customerAuth from "../middleware/customer.middleware.js";
 import auth from "../middleware/auth.middleware.js";
@@ -21,5 +22,7 @@ router.patch("/customer/:id/cancel", customerAuth, cancelOrder);
 // Restaurant owner routes
 router.get("/restaurant", auth, getRestaurantOrders);
 router.patch("/restaurant/:id/status", auth, updateOrderStatus);
+
+router.post("/customer/:id/review", customerAuth, addOrderReview);
 
 export default router;
