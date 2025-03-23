@@ -8,7 +8,12 @@ import Spinner from "../components/Spinner"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { ShoppingBag, Clock, ArrowLeft, MapPin, Phone, CreditCard, Banknote, CheckCircle2, XCircle } from "lucide-react"
+import { ShoppingBag, Clock, ArrowLeft, MapPin, Phone, CreditCard, Banknote, CheckCircle2, XCircle, Star } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog"
+import { Textarea } from "../components/ui/textarea"
+import { Label } from "../components/ui/label"
+import { restaurantService } from "../services/api"
+import { orderService } from "../services/customer-api"
 
 const OrderDetails = () => {
   const { id } = useParams()
@@ -18,6 +23,11 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [cancelling, setCancelling] = useState(false)
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
+  const [rating, setRating] = useState(5)
+  const [comment, setComment] = useState("")
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [reviewError, setReviewError] = useState("")
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -36,7 +46,7 @@ const OrderDetails = () => {
     }
 
     fetchOrder()
-  }, [id, getOrderById])
+  }, [])
 
   const handleCancelOrder = async () => {
     if (!window.confirm("Are you sure you want to cancel this order?")) {
@@ -57,6 +67,33 @@ const OrderDetails = () => {
       setError("Failed to cancel order")
     } finally {
       setCancelling(false)
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (rating < 1 || rating > 5) {
+      setReviewError("Rating must be between 1 and 5")
+      return
+    }
+
+    setSubmittingReview(true)
+    setReviewError("")
+
+    try {
+      const result = await orderService.submitOrderReview(order._id, rating, comment)
+      
+      if (result.success) {
+        // Refresh order data
+        const updatedOrder = await getOrderById(id)
+        setOrder(updatedOrder)
+        setReviewDialogOpen(false)
+      } else {
+        throw new Error(result.message || "Failed to submit review")
+      }
+    } catch (err) {
+      setReviewError(err.message || "Failed to submit review")
+    } finally {
+      setSubmittingReview(false)
     }
   }
 
@@ -122,6 +159,7 @@ const OrderDetails = () => {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Orders
           </Button>
+          
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -214,6 +252,45 @@ const OrderDetails = () => {
                           </>
                         )}
                       </Button>
+                    </div>
+                  )}
+
+                  {order.status === "delivered" && !order.review.rating  && (
+                    <div className="pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setReviewDialogOpen(true)}
+                        className="w-full"
+                      >
+                        <Star className="mr-2 h-4 w-4" />
+                        Add Review
+                      </Button>
+                    </div>
+                  )}
+
+                  {order.status === "delivered" && order.review && (
+                    <div className="pt-4">
+                      <div className="p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <h3 className="text-sm font-medium">Your Review</h3>
+                          <div className="ml-auto flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i < order.review.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {order.review.comment && (
+                          <p className="text-sm text-muted-foreground">{order.review.comment}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {formatDate(order.review.createdAt)}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -309,9 +386,59 @@ const OrderDetails = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Review</DialogTitle>
+            <DialogDescription>
+              Share your experience about this order and restaurant
+            </DialogDescription>
+          </DialogHeader>
+          
+          {reviewError && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertDescription>{reviewError}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="space-y-4 py-4">
+            <div className="flex justify-center space-x-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-8 w-8 cursor-pointer ${
+                    star <= rating ? "text-yellow-500 fill-yellow-500" : "text-gray-300"
+                  }`}
+                  onClick={() => setRating(star)}
+                />
+              ))}
+            </div>
+            
+            <div>
+              <Label htmlFor="comment">Your Comments (Optional)</Label>
+              <Textarea
+                id="comment"
+                placeholder="Tell us about your experience..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="mt-2"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviewDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitReview} disabled={submittingReview}>
+              {submittingReview ? "Submitting..." : "Submit Review"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
 
 export default OrderDetails
-
