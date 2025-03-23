@@ -227,3 +227,58 @@ export const updateOrderStatus = async (req, res) => {
       .json({ message: "Something went wrong", error: error.message });
   }
 };
+
+// Add a review to an order
+export const addOrderReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body;
+
+    // Validate input
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+    }
+
+    // Find the order
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check if the order belongs to the customer
+    if (order.customer.toString() !== req.userId) {
+      return res.status(403).json({ message: "Not authorized to review this order" });
+    }
+
+    // Check if the order is delivered
+    if (order.status !== "delivered") {
+      return res.status(400).json({ message: "Can only review delivered orders" });
+    }
+
+    // Check if the order already has a review
+    if (order.review && order.review.rating) {
+      return res.status(400).json({ message: "Order already has a review" });
+    }
+
+    // Update the order with the review using findByIdAndUpdate
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          review: {
+            rating: Number(rating),
+            comment: comment || "",
+            createdAt: new Date()
+          },
+          updatedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
+    res.status(200).json({ message: "Review added successfully", order: updatedOrder });
+  } catch (error) {
+    console.error("Error adding review:", error);
+    res.status(500).json({ message: "Something went wrong", error: error.message });
+  }
+};
