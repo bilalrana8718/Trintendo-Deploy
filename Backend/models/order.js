@@ -65,6 +65,23 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  review: {
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: null
+    },
+    comment: {
+      type: String,
+      trim: true,
+      default: ""
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    }
+  }
 })
 
 // Update the updatedAt field before saving
@@ -76,4 +93,3 @@ orderSchema.pre("save", function (next) {
 const Order = mongoose.model("Order", orderSchema)
 
 export default Order
-
