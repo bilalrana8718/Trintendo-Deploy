@@ -203,5 +203,15 @@ export const orderService = {
       throw error
     }
   },
+
+  submitOrderReview: async (id, rating, comment) => {
+    try {
+      const response = await api.post(`/orders/customer/${id}/review`, { rating, comment })
+      return { success: true, data: response.data }
+    } catch (error) {
+      console.error("Submit review error:", error)
+      return { success: false, message: error.response?.data?.message || "Failed to submit review" }
+    }
+  },
 }
 
