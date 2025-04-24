@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useState, useContext } from "react"
-import { orderService } from "../services/customer-api"
+import { orderService, paymentService } from "../services/customer-api"
 import { CustomerContext } from "./CustomerContext"
 import { CartContext } from "./CartContext"
 
@@ -60,7 +60,15 @@ export const OrderProvider = ({ children }) => {
       setOrders([newOrder, ...orders])
       setCurrentOrder(newOrder)
 
-      // Clear the cart after successful order
+      // If payment method is card, redirect to Stripe
+      if (orderData.paymentMethod === 'card') {
+        const { url } = await paymentService.createCheckoutSession(newOrder._id)
+        // Redirect the user to Stripe checkout
+        window.location.href = url
+        return { success: true, order: newOrder, redirecting: true }
+      }
+
+      // Clear the cart after successful order if not redirecting to Stripe
       await clearCart()
 
       return { success: true, order: newOrder }

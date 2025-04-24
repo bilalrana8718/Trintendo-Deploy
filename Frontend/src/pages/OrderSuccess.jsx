@@ -1,23 +1,30 @@
 "use client"
 
 import { useEffect, useState, useContext } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useParams, useLocation } from "react-router-dom"
 import { OrderContext } from "../context/OrderContext"
 import Navbar from "../components/Navbar"
 import Spinner from "../components/Spinner"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Alert, AlertDescription } from "../components/ui/alert"
-import { CheckCircle, Clock, MapPin, ArrowRight, ShoppingBag } from "lucide-react"
+import { CheckCircle, Clock, MapPin, ArrowRight, ShoppingBag, CreditCard } from "lucide-react"
 
 const OrderSuccess = () => {
   const { id } = useParams()
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const { getOrderById } = useContext(OrderContext)
   const [order, setOrder] = useState(null)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    if (searchParams.get('payment_success') === 'true') {
+      setPaymentSuccess(true)
+    }
+
     const fetchOrder = async () => {
       try {
         const orderData = await getOrderById(id)
@@ -34,7 +41,7 @@ const OrderSuccess = () => {
     }
 
     fetchOrder()
-  }, [id, getOrderById])
+  }, [id, getOrderById, location.search])
 
   if (loading) return <Spinner />
 
@@ -70,6 +77,14 @@ const OrderSuccess = () => {
               <p className="text-muted-foreground">
                 Thank you for your order. Your order has been received and is being processed.
               </p>
+              {paymentSuccess && (
+                <Alert className="mt-4 bg-green-50 border-green-200 text-green-700">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <AlertDescription>
+                    Payment processed successfully with Stripe!
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="bg-muted/30 p-6 rounded-lg mb-8">
@@ -88,7 +103,10 @@ const OrderSuccess = () => {
                 </div>
                 <div className="mt-4 md:mt-0">
                   <h2 className="text-sm font-medium text-muted-foreground">PAYMENT METHOD</h2>
-                  <p className="font-medium capitalize">{order.paymentMethod}</p>
+                  <p className="font-medium capitalize flex items-center">
+                    {order.paymentMethod === 'card' && <CreditCard className="h-4 w-4 mr-1" />}
+                    {order.paymentMethod}
+                  </p>
                 </div>
               </div>
             </div>
@@ -100,6 +118,16 @@ const OrderSuccess = () => {
                 <span className="font-medium capitalize">{order.status}</span>
               </div>
             </div>
+
+            {order.paymentMethod === 'card' && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">Payment Status</h2>
+                <div className="flex items-center p-4 bg-primary/10 rounded-lg">
+                  <CreditCard className="h-5 w-5 text-primary mr-2" />
+                  <span className="font-medium capitalize">{order.paymentStatus}</span>
+                </div>
+              </div>
+            )}
 
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-4">Delivery Address</h2>

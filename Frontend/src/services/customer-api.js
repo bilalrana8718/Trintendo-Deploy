@@ -215,3 +215,17 @@ export const orderService = {
   },
 }
 
+// Payment services
+export const paymentService = {
+  // Create Stripe checkout session
+  createCheckoutSession: async (orderId) => {
+    try {
+      const response = await api.post("/payments/create-checkout-session", { orderId })
+      return response.data
+    } catch (error) {
+      console.error("Create checkout session error:", error)
+      throw error
+    }
+  }
+}
+

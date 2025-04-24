@@ -57,6 +57,10 @@ const orderSchema = new mongoose.Schema({
     enum: ["pending", "completed", "failed"],
     default: "pending",
   },
+  stripeSessionId: {
+    type: String,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useContext, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { CustomerContext } from "../context/CustomerContext"
 import { CartContext } from "../context/CartContext"
 import { OrderContext } from "../context/OrderContext"
@@ -27,6 +27,7 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const location = useLocation()
   const { customer } = useContext(CustomerContext)
   const { cart, cartTotal } = useContext(CartContext)
   const { createOrder } = useContext(OrderContext)
@@ -42,7 +43,13 @@ const Checkout = () => {
     if (customer?.address) {
       setDeliveryAddress(customer.address)
     }
-  }, [cart.items.length, navigate, customer])
+
+    // Check for payment_cancelled query param
+    const searchParams = new URLSearchParams(location.search)
+    if (searchParams.get('payment_cancelled') === 'true') {
+      setError("Payment was cancelled. Please try again.")
+    }
+  }, [cart.items.length, navigate, customer, location.search])
 
   const handleAddressChange = (e) => {
     const { name, value } = e.target
@@ -70,6 +77,10 @@ const Checkout = () => {
       })
 
       if (result.success) {
+        // If redirecting to Stripe, don't navigate yet
+        if (result.redirecting) {
+          return; // The redirect will happen in OrderContext
+        }
         navigate(`/order-success/${result.order._id}`)
       } else {
         setError(result.message)
@@ -177,7 +188,7 @@ const Checkout = () => {
                       <RadioGroupItem value="card" id="card" />
                       <Label htmlFor="card" className="flex items-center">
                         <CreditCard className="mr-2 h-5 w-5" />
-                        Credit/Debit Card
+                        Credit/Debit Card (Stripe)
                       </Label>
                     </div>
                   </RadioGroup>
@@ -191,7 +202,7 @@ const Checkout = () => {
                     Processing...
                   </>
                 ) : (
-                  "Place Order"
+                  paymentMethod === 'card' ? "Pay with Stripe" : "Place Order"
                 )}
               </Button>
             </form>

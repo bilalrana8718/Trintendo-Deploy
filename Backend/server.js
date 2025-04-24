@@ -8,6 +8,7 @@ import restaurantRoutes from "./routes/restaurants.route.js";
 import customerRoutes from "./routes/customer.route.js";
 import cartRoutes from "./routes/cart.route.js";
 import orderRoutes from "./routes/order.route.js";
+import paymentRoutes from "./routes/payment.route.js";
 
 dotenv.config();
 
@@ -15,7 +16,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ verify: (req, res, buf) => {
+  // Save the raw body for webhook verification
+  if (req.originalUrl === '/api/payments/webhook') {
+    req.rawBody = buf.toString();
+  }
+}}));
 app.use(morgan("dev"));
 app.use(cors());
 
@@ -25,6 +31,7 @@ app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Connect to MongoDB
 mongoose
