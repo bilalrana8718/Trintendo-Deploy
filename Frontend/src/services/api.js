@@ -1,12 +1,12 @@
 import axios from "axios";
-import { API_URL } from "../config";
 
-// Create axios instance with base URL
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL,
 });
 
-// Add request interceptor to add auth token
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -18,6 +18,7 @@ api.interceptors.request.use(
   (error) => {
     return Promise.reject(error);
   }
+
 );
 
 // Restaurant services
@@ -132,4 +133,5 @@ export const riderService = {
       throw error;
     }
   },
+
 };

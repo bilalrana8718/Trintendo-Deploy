@@ -233,6 +233,7 @@ const calculatePopularItems = (orders) => {
 
   return popularItems;
 };
+
 // Update order status (for restaurant owners)
 export const updateOrderStatus = async (req, res) => {
   try {
@@ -247,6 +248,7 @@ export const updateOrderStatus = async (req, res) => {
     // Check if user is a restaurant owner
     if (req.userRole !== "owner") {
       console.log('Authorization failed: User is not an owner', { userRole: req.userRole });
+
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -264,6 +266,7 @@ export const updateOrderStatus = async (req, res) => {
 
     if (!restaurants.length) {
       console.log('No restaurants found for owner:', req.userId);
+
       return res
         .status(403)
         .json({ message: "Not authorized to update this order" });
@@ -283,6 +286,7 @@ export const updateOrderStatus = async (req, res) => {
     });
 
     if (!restaurantIds.includes(orderRestaurantId)) {
+
       return res
         .status(403)
         .json({ message: "Not authorized to update this order" });
@@ -297,6 +301,7 @@ export const updateOrderStatus = async (req, res) => {
       picked_up: ["in_transit"],
       in_transit: ["near_delivery"],
       near_delivery: ["delivered"],
+
       delivered: [],
       cancelled: [],
     };
@@ -322,6 +327,7 @@ export const updateOrderStatus = async (req, res) => {
     res.status(200).json(order);
   } catch (error) {
     console.error('Error in updateOrderStatus:', error);
+
     res
       .status(500)
       .json({ message: "Something went wrong", error: error.message });

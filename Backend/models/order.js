@@ -55,6 +55,7 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Rider",
   }],
+
   items: [orderItemSchema],
   totalAmount: {
     type: Number,
@@ -88,6 +89,7 @@ const orderSchema = new mongoose.Schema({
     default: "pending"
   },
   statusHistory: [deliveryStatusSchema],
+
   deliveryAddress: {
     street: String,
     city: String,

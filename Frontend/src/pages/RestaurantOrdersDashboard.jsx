@@ -38,6 +38,7 @@ const RestaurantOrdersDashboard = () => {
         status: newStatus,
       });
       console.log('Update successful:', updatedOrder);
+
       // Update order in the list locally
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
@@ -49,6 +50,7 @@ const RestaurantOrdersDashboard = () => {
       console.error("Failed to update order status", err);
       const errorMessage = err.response?.data?.message || err.message || "Failed to update order status.";
       setError(errorMessage);
+
     }
   };
 
@@ -135,6 +137,7 @@ const RestaurantOrdersDashboard = () => {
                       <div className="text-sm text-gray-600">
                         Waiting for rider pickup
                       </div>
+
                     )}
                   </div>
                 </div>

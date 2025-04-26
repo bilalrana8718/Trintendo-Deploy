@@ -52,6 +52,7 @@ const Dashboard = () => {
           totalSales: totalSalesAmount
         })
         
+
       } catch (err) {
         setError("Failed to fetch dashboard data")
         console.error(err)
@@ -59,7 +60,7 @@ const Dashboard = () => {
         setLoading(false)
       }
     }
-  
+
     fetchData()
   }, [])
 

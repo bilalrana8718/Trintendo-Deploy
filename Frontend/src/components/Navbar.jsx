@@ -11,6 +11,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 import { ShoppingCart, User, ChevronDown } from "lucide-react";
 
 const Navbar = () => {
@@ -21,6 +23,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     if (userType === "customer" && customer) {
+
       customerLogout();
       navigate("/customer/login");
     } else if (user) {
@@ -70,6 +73,7 @@ const Navbar = () => {
       default:
         return "/";
     }
+
   };
 
   return (
@@ -80,6 +84,7 @@ const Navbar = () => {
 
       <div className="flex items-center gap-6">
         {customer && userType === "customer" ? (
+
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -147,11 +152,13 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                 )}
+
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="cursor-pointer">
                     Profile
                   </Link>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="cursor-pointer"
@@ -185,6 +192,7 @@ const Navbar = () => {
               >
                 Rider
               </Button>
+
             </div>
 
             <div className="flex gap-2">
@@ -193,6 +201,7 @@ const Navbar = () => {
               </Button>
               <Button asChild>
                 <Link to={getRegisterPath()}>Register</Link>
+
               </Button>
             </div>
           </div>

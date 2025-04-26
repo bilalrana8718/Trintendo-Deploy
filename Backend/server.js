@@ -17,7 +17,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(express.json());
+
+app.use(express.json({ verify: (req, res, buf) => {
+  // Save the raw body for webhook verification
+  if (req.originalUrl === '/api/payments/webhook') {
+    req.rawBody = buf.toString();
+  }
+}}));
 app.use(morgan("dev"));
 app.use(cors());
 

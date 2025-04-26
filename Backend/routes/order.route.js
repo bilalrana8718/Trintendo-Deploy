@@ -28,5 +28,4 @@ router.post("/customer/:id/review", customerAuth, addOrderReview);
 
 // Add the new route after the restaurant owner routes
 router.get("/restaurant/analytics", auth,  getOrderAnalytics)
-
 export default router;
