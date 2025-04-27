@@ -1,0 +1,17 @@
+{
+  "testEnvironment": "node",
+  "transform": {
+    "^.+\\.[t|j]sx?$": "babel-jest"
+  },
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "testMatch": ["**/__tests__/**/*.js", "**/?(*.)+(spec|test).js"],
+  "verbose": true,
+  "forceExit": false,
+  "clearMocks": true,
+  "resetMocks": true,
+  "restoreMocks": true,
+  "testTimeout": 10000,
+  "setupFiles": ["<rootDir>/jest.setup.js"]
+} 
