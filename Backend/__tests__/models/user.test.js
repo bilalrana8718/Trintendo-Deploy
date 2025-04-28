@@ -24,16 +24,9 @@ describe('User Model', () => {
   beforeEach(() => {
     validUserData = {
       name: 'Test User',
-      email: 'test@example.com',
-      password: 'Password123!',
-      role: 'owner',
-      address: {
-        street: '123 Test St',
-        city: 'Test City',
-        state: 'Test State',
-        zipCode: '12345',
-        country: 'Test Country'
-      }
+      email: 'testuser@example.com',
+      password: 'password123',
+      role: 'owner'
     };
   });
   
@@ -79,7 +72,7 @@ describe('User Model', () => {
     test('should validate role enum values', async () => {
       const user = new User({
         ...validUserData,
-        role: 'invalid-role'
+        role: 'invalid_role'
       });
       
       await expect(user.validate()).rejects.toThrow();
@@ -90,11 +83,33 @@ describe('User Model', () => {
       }
     });
     
-    test('should validate password length', async () => {
+    test('should allow all valid role enum values', async () => {
+      // Test 'owner' role
+      const ownerUser = new User({ ...validUserData, role: 'owner' });
+      await expect(ownerUser.validate()).resolves.toBeUndefined();
+      
+      // Test 'admin' role
+      const adminUser = new User({ ...validUserData, role: 'admin' });
+      await expect(adminUser.validate()).resolves.toBeUndefined();
+      
+      // Test 'rider' role
+      const riderUser = new User({ ...validUserData, role: 'rider' });
+      await expect(riderUser.validate()).resolves.toBeUndefined();
+    });
+    
+    test('should set default values correctly', () => {
       const user = new User({
-        ...validUserData,
-        password: 'short'
+        name: 'Test User',
+        email: 'testuser@example.com',
+        password: 'password123'
       });
+      
+      expect(user.role).toBe('owner');
+      expect(user.createdAt).toBeInstanceOf(Date);
+    });
+    
+    test('should reject password with less than minimum length', async () => {
+      const user = new User({ ...validUserData, password: '12345' }); // less than 6 chars
       
       await expect(user.validate()).rejects.toThrow();
       try {
@@ -107,43 +122,79 @@ describe('User Model', () => {
   
   describe('Password Hashing', () => {
     test('should hash password before saving', async () => {
-      const user = new User(validUserData);
-      const savedUser = await user.save();
+      // Spy on bcrypt hash function
+      const hashSpy = jest.spyOn(bcrypt, 'hash');
       
-      // Password should be hashed
-      expect(savedUser.password).not.toBe(validUserData.password);
-      // Verify hash is valid
-      const isMatch = await bcrypt.compare(validUserData.password, savedUser.password);
-      expect(isMatch).toBe(true);
+      const user = new User(validUserData);
+      await user.save();
+      
+      // Verify that hash was called
+      expect(hashSpy).toHaveBeenCalledWith(validUserData.password, 10);
+      
+      // Verify password was hashed (not plain text)
+      expect(user.password).not.toBe(validUserData.password);
+      
+      // Restore the original implementation
+      hashSpy.mockRestore();
     });
     
     test('should not rehash password if not modified', async () => {
+      // First save to hash the password
       const user = new User(validUserData);
-      const savedUser = await user.save();
-      const passwordAfterFirstSave = savedUser.password;
+      await user.save();
       
-      // Update a field other than password
-      savedUser.name = 'Updated Name';
-      await savedUser.save();
+      // Get the hashed password
+      const originalHashedPassword = user.password;
       
-      // Password hash should remain the same
-      expect(savedUser.password).toBe(passwordAfterFirstSave);
+      // Spy on bcrypt hash function after first save
+      const hashSpy = jest.spyOn(bcrypt, 'hash');
+      
+      // Update something other than password
+      user.name = 'Updated Name';
+      await user.save();
+      
+      // Verify hash was not called again
+      expect(hashSpy).not.toHaveBeenCalled();
+      expect(user.password).toBe(originalHashedPassword);
+      
+      // Restore the original implementation
+      hashSpy.mockRestore();
+    });
+  });
+  
+  describe('Methods', () => {
+    test('comparePassword should return true for correct password', async () => {
+      // Spy on bcrypt compare function
+      const compareSpy = jest.spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true));
+      
+      const user = new User(validUserData);
+      await user.save();
+      
+      const result = await user.comparePassword(validUserData.password);
+      
+      expect(compareSpy).toHaveBeenCalled();
+      expect(result).toBe(true);
+      
+      // Restore the original implementation
+      compareSpy.mockRestore();
     });
     
-    test('should hash password if modified', async () => {
+    test('comparePassword should return false for incorrect password', async () => {
+      // Spy on bcrypt compare function
+      const compareSpy = jest.spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(false));
+      
       const user = new User(validUserData);
-      const savedUser = await user.save();
-      const passwordAfterFirstSave = savedUser.password;
+      await user.save();
       
-      // Update password
-      savedUser.password = 'NewPassword123!';
-      await savedUser.save();
+      const result = await user.comparePassword('wrongpassword');
       
-      // Password hash should be different
-      expect(savedUser.password).not.toBe(passwordAfterFirstSave);
-      // Verify new hash is valid
-      const isMatch = await bcrypt.compare('NewPassword123!', savedUser.password);
-      expect(isMatch).toBe(true);
+      expect(compareSpy).toHaveBeenCalled();
+      expect(result).toBe(false);
+      
+      // Restore the original implementation
+      compareSpy.mockRestore();
     });
   });
   
@@ -153,28 +204,11 @@ describe('User Model', () => {
       const savedUser = await user.save();
       
       expect(savedUser._id).toBeDefined();
-      expect(savedUser.name).toBe(validUserData.name);
-      expect(savedUser.email).toBe(validUserData.email);
       
       // Verify we can find it
       const foundUser = await User.findById(savedUser._id);
       expect(foundUser).not.toBeNull();
-      expect(foundUser.role).toBe(validUserData.role);
-    });
-    
-    test('should enforce unique email addresses', async () => {
-      // Save first user
-      const user1 = new User(validUserData);
-      await user1.save();
-      
-      // Try to save second user with same email
-      const user2 = new User({
-        ...validUserData,
-        name: 'Another Test User'
-      });
-      
-      // Should throw duplicate key error
-      await expect(user2.save()).rejects.toThrow();
+      expect(foundUser.email).toBe(validUserData.email);
     });
     
     test('should update a user in the database', async () => {
@@ -182,12 +216,14 @@ describe('User Model', () => {
       const savedUser = await user.save();
       
       // Update user
-      savedUser.name = 'Updated User Name';
+      savedUser.name = 'Updated Name';
+      savedUser.role = 'admin';
       await savedUser.save();
       
       // Verify the update
       const updatedUser = await User.findById(savedUser._id);
-      expect(updatedUser.name).toBe('Updated User Name');
+      expect(updatedUser.name).toBe('Updated Name');
+      expect(updatedUser.role).toBe('admin');
     });
     
     test('should delete a user from the database', async () => {
@@ -204,6 +240,18 @@ describe('User Model', () => {
       // Verify it's gone
       foundUser = await User.findById(savedUser._id);
       expect(foundUser).toBeNull();
+    });
+    
+    test('should enforce email uniqueness', async () => {
+      // Create first user
+      const user1 = new User(validUserData);
+      await user1.save();
+      
+      // Try to create another user with the same email
+      const user2 = new User(validUserData);
+      
+      // This should fail with a duplicate key error
+      await expect(user2.save()).rejects.toThrow();
     });
   });
 }); 

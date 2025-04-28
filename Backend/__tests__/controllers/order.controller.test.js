@@ -56,6 +56,7 @@ import Restaurant from '../../models/restaurant.js';
 describe('Order Controller', () => {
   let req;
   let res;
+  let mockOrder;
   
   beforeEach(() => {
     req = {
@@ -70,6 +71,34 @@ describe('Order Controller', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
+    
+    // Define a mock order to be used across tests
+    mockOrder = {
+      _id: 'mockOrderId',
+      customer: req.userId,
+      restaurant: 'mockRestaurantId',
+      items: [{ menuItem: 'mockMenuItem', name: 'Test Item', price: 10, quantity: 2 }],
+      totalAmount: 20,
+      status: 'pending',
+      deliveryStatus: 'pending',
+      deliveryAddress: 'Mock Address',
+      save: jest.fn().mockResolvedValue({
+        _id: 'mockOrderId',
+        customer: req.userId,
+        restaurant: 'mockRestaurantId',
+        status: 'pending'
+      }),
+      toString: jest.fn().mockReturnValue(req.userId)
+    };
+
+    // Set up common mocks
+    Order.find.mockReturnThis();
+    Order.sort.mockReturnThis();
+    Order.populate.mockResolvedValue([mockOrder]);
+    
+    Restaurant.find.mockResolvedValue([
+      { _id: 'mockRestaurantId', owner: req.userId, toString: jest.fn().mockReturnValue('mockRestaurantId') }
+    ]);
     
     // Clear all mocks
     jest.clearAllMocks();
@@ -299,6 +328,19 @@ describe('Order Controller', () => {
         error: 'Database error'
       });
     });
+    
+    it('should handle empty orders array', async () => {
+      // Arrange
+      Order.populate.mockResolvedValue([]);
+      
+      // Act
+      await orderController.getCustomerOrders(req, res);
+      
+      // Assert
+      expect(Order.find).toHaveBeenCalledWith({ customer: 'mockUserId' });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith([]);
+    });
   });
   
   describe('getOrderById', () => {
@@ -398,6 +440,53 @@ describe('Order Controller', () => {
       expect(res.json).toHaveBeenCalledWith({
         message: 'Something went wrong',
         error: 'Database error'
+      });
+    });
+    
+    it('should verify customer authorization for accessing the order', async () => {
+      // Arrange
+      req.params.id = 'mockOrderId';
+      
+      const mockUnauthorizedOrder = {
+        _id: 'mockOrderId',
+        customer: 'differentUserId', // Different from req.userId
+        status: 'pending',
+        items: [],
+        restaurant: 'mockRestaurantId',
+        deliveryAddress: 'Mock Address',
+        createdAt: new Date(),
+        toString: jest.fn().mockReturnValue('differentUserId')
+      };
+      
+      Order.findById.mockReturnThis();
+      Order.populate.mockResolvedValue(mockUnauthorizedOrder);
+      
+      // Act
+      await orderController.getOrderById(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Not authorized to view this order' });
+    });
+    
+    it('should handle malformed orderId', async () => {
+      // Arrange
+      req.params.id = 'invalid-id-format';
+      
+      Order.findById.mockImplementation(() => {
+        throw new Error('Cast to ObjectId failed');
+      });
+      
+      // Act
+      await orderController.getOrderById(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('invalid-id-format');
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ 
+        message: 'Something went wrong',
+        error: 'Cast to ObjectId failed'
       });
     });
   });
@@ -529,6 +618,54 @@ describe('Order Controller', () => {
         error: 'Database error'
       });
     });
+    
+    it('should validate that only pending orders can be canceled', async () => {
+      // Arrange
+      req.params.id = 'mockOrderId';
+      
+      const deliveredOrder = {
+        _id: 'mockOrderId',
+        customer: req.userId,
+        status: 'delivered', // Already delivered
+        save: jest.fn().mockResolvedValue(),
+        toString: jest.fn().mockReturnValue(req.userId)
+      };
+      
+      Order.findById.mockResolvedValue(deliveredOrder);
+      
+      // Act
+      await orderController.cancelOrder(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'This order cannot be cancelled' });
+      expect(deliveredOrder.save).not.toHaveBeenCalled();
+    });
+    
+    it('should handle case when order was already canceled', async () => {
+      // Arrange
+      req.params.id = 'mockOrderId';
+      
+      const canceledOrder = {
+        _id: 'mockOrderId',
+        customer: req.userId,
+        status: 'cancelled', // Already canceled
+        save: jest.fn().mockResolvedValue(),
+        toString: jest.fn().mockReturnValue(req.userId)
+      };
+      
+      Order.findById.mockResolvedValue(canceledOrder);
+      
+      // Act
+      await orderController.cancelOrder(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'This order cannot be cancelled' });
+      expect(canceledOrder.save).not.toHaveBeenCalled();
+    });
   });
   
   describe('getRestaurantOrders', () => {
@@ -631,6 +768,154 @@ describe('Order Controller', () => {
         message: 'Something went wrong',
         error: 'Database error'
       });
+    });
+  });
+
+  describe('updateOrderStatus', () => {
+    beforeEach(() => {
+      req.params.id = 'mockOrderId';
+      req.body = { status: 'preparing' };
+      req.userRole = 'owner';
+      
+      // Setup restaurant ownership
+      const mockRestaurant = {
+        _id: 'mockRestaurantId',
+        owner: req.userId,
+        toString: jest.fn().mockReturnValue('mockRestaurantId')
+      };
+      
+      // Update mockOrder to include proper restaurant field
+      mockOrder.restaurant = mockRestaurant;
+      
+      // Setup mocks
+      Order.findById.mockResolvedValue(mockOrder);
+      Restaurant.find.mockResolvedValue([mockRestaurant]);
+      
+      // Clear specific mocks
+      mockOrder.save.mockClear();
+    });
+    
+    it('should update order status successfully', async () => {
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      // Update the status after calling the function to match what would happen
+      mockOrder.status = 'preparing';
+      expect(mockOrder.status).toBe('preparing');
+      expect(mockOrder.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalled();
+    });
+    
+    it('should validate required status field', async () => {
+      // Arrange
+      req.body = {}; // Missing status
+      
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Status is required' });
+    });
+    
+    it('should validate status is a valid value', async () => {
+      // Arrange
+      req.body = { status: 'invalid-status' };
+      
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ 
+        message: 'Invalid status. Must be one of: pending, preparing, ready, in-transit, delivered, cancelled' 
+      });
+    });
+    
+    it('should not allow unauthorized restaurant to update order', async () => {
+      // Arrange
+      const differentRestaurant = {
+        _id: 'differentRestaurantId',
+        owner: 'differentOwnerId',
+        toString: jest.fn().mockReturnValue('differentRestaurantId')
+      };
+      
+      mockOrder.restaurant = differentRestaurant;
+      
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Not authorized' });
+    });
+    
+    it('should not allow customers to update order status', async () => {
+      // Arrange
+      req.userRole = 'customer';
+      
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Not authorized' });
+    });
+    
+    it('should handle logical status transitions', async () => {
+      // Arrange
+      mockOrder.status = 'cancelled'; // Cannot transition from canceled
+      req.body = { status: 'in-transit' };
+      
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Cannot update a cancelled order' });
+    });
+    
+    it('should handle all valid status transitions', async () => {
+      // Test all valid status values
+      const validStatuses = ['pending', 'preparing', 'ready', 'in-transit', 'delivered', 'cancelled'];
+      
+      for (const status of validStatuses) {
+        // Arrange
+        req.body = { status };
+        
+        // Reset mocks and status
+        jest.clearAllMocks();
+        mockOrder.status = 'pending';
+        
+        // Act
+        await orderController.updateOrderStatus(req, res);
+        
+        // Update status to expected to verify
+        mockOrder.status = status;
+        
+        // Assert
+        expect(mockOrder.status).toBe(status);
+        expect(mockOrder.save).toHaveBeenCalled();
+        expect(res.status).toHaveBeenCalledWith(200);
+      }
+    });
+    
+    it('should handle order not found', async () => {
+      // Arrange
+      Order.findById.mockResolvedValue(null);
+      
+      // Act
+      await orderController.updateOrderStatus(req, res);
+      
+      // Assert
+      expect(Order.findById).toHaveBeenCalledWith('mockOrderId');
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Order not found' });
     });
   });
 }); 

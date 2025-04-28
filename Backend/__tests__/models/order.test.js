@@ -251,18 +251,157 @@ describe('Order Model', () => {
     
     test('should delete an order from the database', async () => {
       const order = new Order(validOrderData);
+      await order.save();
+      
+      // Delete the order
+      await Order.findByIdAndDelete(order._id);
+      
+      // Verify it's deleted
+      const deletedOrder = await Order.findById(order._id);
+      expect(deletedOrder).toBeNull();
+    });
+  });
+  
+  describe('Pre-save Hooks', () => {
+    test('should update updatedAt field on save', async () => {
+      // Create and save an order
+      const order = new Order(validOrderData);
       const savedOrder = await order.save();
       
-      // Verify it exists
-      let foundOrder = await Order.findById(savedOrder._id);
-      expect(foundOrder).not.toBeNull();
+      // Record the first updatedAt time
+      const firstUpdatedAt = savedOrder.updatedAt;
       
-      // Delete it
-      await Order.deleteOne({ _id: savedOrder._id });
+      // Wait a bit to ensure time difference
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Verify it's gone
-      foundOrder = await Order.findById(savedOrder._id);
-      expect(foundOrder).toBeNull();
+      // Update the order
+      savedOrder.status = 'confirmed';
+      await savedOrder.save();
+      
+      // Verify updatedAt was changed
+      expect(savedOrder.updatedAt).not.toEqual(firstUpdatedAt);
+      expect(savedOrder.updatedAt > firstUpdatedAt).toBe(true);
+    });
+    
+    test('should add status to history when deliveryStatus changes', async () => {
+      // Create and save an order
+      const order = new Order(validOrderData);
+      const savedOrder = await order.save();
+      
+      // Initial status history should be empty
+      expect(savedOrder.statusHistory).toBeDefined();
+      expect(savedOrder.statusHistory.length).toBe(0);
+      
+      // Update the delivery status
+      savedOrder.deliveryStatus = 'assigned';
+      await savedOrder.save();
+      
+      // Verify that status was added to history
+      expect(savedOrder.statusHistory.length).toBe(1);
+      expect(savedOrder.statusHistory[0].status).toBe('assigned');
+      expect(savedOrder.statusHistory[0].timestamp).toBeInstanceOf(Date);
+      
+      // Update again
+      savedOrder.deliveryStatus = 'picked_up';
+      await savedOrder.save();
+      
+      // Verify second status was added
+      expect(savedOrder.statusHistory.length).toBe(2);
+      expect(savedOrder.statusHistory[1].status).toBe('picked_up');
+    });
+  });
+  
+  describe('Order Status Management', () => {
+    test('should validate deliveryStatus enum values', async () => {
+      const order = new Order({
+        ...validOrderData,
+        deliveryStatus: 'invalid_status'
+      });
+      
+      await expect(order.validate()).rejects.toThrow();
+      try {
+        await order.validate();
+      } catch (error) {
+        expect(error.errors.deliveryStatus).toBeDefined();
+      }
+    });
+    
+    test('should store rider information when assigned', async () => {
+      const riderId = new mongoose.Types.ObjectId();
+      const order = new Order({
+        ...validOrderData,
+        rider: riderId,
+        deliveryStatus: 'assigned'
+      });
+      
+      const savedOrder = await order.save();
+      expect(savedOrder.rider).toEqual(riderId);
+      expect(savedOrder.deliveryStatus).toBe('assigned');
+    });
+    
+    test('should handle declined riders list', async () => {
+      const declinedRider1 = new mongoose.Types.ObjectId();
+      const declinedRider2 = new mongoose.Types.ObjectId();
+      
+      const order = new Order({
+        ...validOrderData,
+        declinedRiders: [declinedRider1, declinedRider2]
+      });
+      
+      const savedOrder = await order.save();
+      expect(savedOrder.declinedRiders.length).toBe(2);
+      expect(savedOrder.declinedRiders[0]).toEqual(declinedRider1);
+      expect(savedOrder.declinedRiders[1]).toEqual(declinedRider2);
+    });
+  });
+  
+  describe('Payment and Review Features', () => {
+    test('should store payment information', async () => {
+      const order = new Order({
+        ...validOrderData,
+        paymentMethod: 'card',
+        paymentStatus: 'completed',
+        stripeSessionId: 'sess_123456789'
+      });
+      
+      const savedOrder = await order.save();
+      expect(savedOrder.paymentMethod).toBe('card');
+      expect(savedOrder.paymentStatus).toBe('completed');
+      expect(savedOrder.stripeSessionId).toBe('sess_123456789');
+    });
+    
+    test('should store review information', async () => {
+      const reviewData = {
+        rating: 4,
+        comment: 'Great service!'
+      };
+      
+      const order = new Order({
+        ...validOrderData,
+        review: reviewData
+      });
+      
+      const savedOrder = await order.save();
+      expect(savedOrder.review.rating).toBe(4);
+      expect(savedOrder.review.comment).toBe('Great service!');
+      expect(savedOrder.review.createdAt).toBeInstanceOf(Date);
+    });
+    
+    test('should validate review rating range', async () => {
+      const order = new Order({
+        ...validOrderData,
+        review: {
+          rating: 6, // Invalid: should be 1-5
+          comment: 'Test'
+        }
+      });
+      
+      await expect(order.validate()).rejects.toThrow();
+      try {
+        await order.validate();
+      } catch (error) {
+        expect(error.errors['review.rating']).toBeDefined();
+      }
     });
   });
 }); 

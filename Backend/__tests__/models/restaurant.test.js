@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
-import Restaurant from '../../models/restaurant.js';
 import * as dbHandler from '../../test-utils/db.js';
+import Restaurant from '../../models/restaurant.js';
 
 describe('Restaurant Model', () => {
   let validRestaurantData;
+  let validMenuItemData;
   
   // Connect to in-memory database before tests
   beforeAll(async () => {
@@ -21,14 +22,25 @@ describe('Restaurant Model', () => {
   });
   
   beforeEach(() => {
+    validMenuItemData = {
+      name: 'Test Item',
+      description: 'Delicious test item',
+      price: 9.99,
+      category: 'Main Course',
+      image: 'test-item.jpg',
+      isAvailable: true
+    };
+    
     validRestaurantData = {
       name: 'Test Restaurant',
-      address: '123 Food St, Culinary City',
+      description: 'A test restaurant description',
+      address: '123 Test St, Test City',
       phone: '1234567890',
       cuisine: 'Italian',
+      image: 'test-restaurant.jpg',
       owner: new mongoose.Types.ObjectId(),
-      description: 'A fantastic Italian restaurant with authentic dishes',
-      image: 'https://example.com/restaurant.jpg'
+      menu: [validMenuItemData],
+      isOpen: true
     };
   });
   
@@ -71,6 +83,17 @@ describe('Restaurant Model', () => {
       }
     });
     
+    test('should require cuisine field', async () => {
+      const restaurant = new Restaurant({ ...validRestaurantData, cuisine: undefined });
+      
+      await expect(restaurant.validate()).rejects.toThrow();
+      try {
+        await restaurant.validate();
+      } catch (error) {
+        expect(error.errors.cuisine).toBeDefined();
+      }
+    });
+    
     test('should require owner field', async () => {
       const restaurant = new Restaurant({ ...validRestaurantData, owner: undefined });
       
@@ -82,10 +105,25 @@ describe('Restaurant Model', () => {
       }
     });
     
+    test('should not require description field', async () => {
+      const restaurant = new Restaurant({ ...validRestaurantData, description: undefined });
+      await expect(restaurant.validate()).resolves.toBeUndefined();
+    });
+    
+    test('should not require image field', async () => {
+      const restaurant = new Restaurant({ ...validRestaurantData, image: undefined });
+      await expect(restaurant.validate()).resolves.toBeUndefined();
+    });
+    
+    test('should not require menu field', async () => {
+      const restaurant = new Restaurant({ ...validRestaurantData, menu: undefined });
+      await expect(restaurant.validate()).resolves.toBeUndefined();
+    });
+    
     test('should set default values correctly', () => {
       const restaurant = new Restaurant({
         name: 'Test Restaurant',
-        address: '123 Food St',
+        address: '123 Test St',
         phone: '1234567890',
         cuisine: 'Italian',
         owner: new mongoose.Types.ObjectId()
@@ -93,6 +131,78 @@ describe('Restaurant Model', () => {
       
       expect(restaurant.isOpen).toBe(true);
       expect(restaurant.createdAt).toBeInstanceOf(Date);
+      expect(restaurant.menu).toEqual([]);
+    });
+  });
+  
+  describe('Menu Item Validation', () => {
+    test('should validate a valid menu item', async () => {
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [validMenuItemData]
+      });
+      
+      await expect(restaurant.validate()).resolves.toBeUndefined();
+    });
+    
+    test('should require name field for menu item', async () => {
+      const invalidMenuItem = { ...validMenuItemData, name: undefined };
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [invalidMenuItem]
+      });
+      
+      await expect(restaurant.validate()).rejects.toThrow();
+      try {
+        await restaurant.validate();
+      } catch (error) {
+        expect(error.errors['menu.0.name']).toBeDefined();
+      }
+    });
+    
+    test('should require price field for menu item', async () => {
+      const invalidMenuItem = { ...validMenuItemData, price: undefined };
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [invalidMenuItem]
+      });
+      
+      await expect(restaurant.validate()).rejects.toThrow();
+      try {
+        await restaurant.validate();
+      } catch (error) {
+        expect(error.errors['menu.0.price']).toBeDefined();
+      }
+    });
+    
+    test('should require category field for menu item', async () => {
+      const invalidMenuItem = { ...validMenuItemData, category: undefined };
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [invalidMenuItem]
+      });
+      
+      await expect(restaurant.validate()).rejects.toThrow();
+      try {
+        await restaurant.validate();
+      } catch (error) {
+        expect(error.errors['menu.0.category']).toBeDefined();
+      }
+    });
+    
+    test('should set default values for menu item', () => {
+      const menuItem = {
+        name: 'Simple Item',
+        price: 5.99,
+        category: 'Side'
+      };
+      
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [menuItem]
+      });
+      
+      expect(restaurant.menu[0].isAvailable).toBe(true);
     });
   });
   
@@ -102,12 +212,11 @@ describe('Restaurant Model', () => {
       const savedRestaurant = await restaurant.save();
       
       expect(savedRestaurant._id).toBeDefined();
-      expect(savedRestaurant.name).toBe(validRestaurantData.name);
       
       // Verify we can find it
       const foundRestaurant = await Restaurant.findById(savedRestaurant._id);
       expect(foundRestaurant).not.toBeNull();
-      expect(foundRestaurant.cuisine).toEqual(validRestaurantData.cuisine);
+      expect(foundRestaurant.name).toBe(validRestaurantData.name);
     });
     
     test('should update a restaurant in the database', async () => {
@@ -115,14 +224,16 @@ describe('Restaurant Model', () => {
       const savedRestaurant = await restaurant.save();
       
       // Update restaurant
-      savedRestaurant.name = 'Updated Restaurant Name';
-      savedRestaurant.cuisine = 'Italian, Pizza, Pasta';
+      savedRestaurant.name = 'Updated Restaurant';
+      savedRestaurant.cuisine = 'Mexican';
+      savedRestaurant.isOpen = false;
       await savedRestaurant.save();
       
       // Verify the update
       const updatedRestaurant = await Restaurant.findById(savedRestaurant._id);
-      expect(updatedRestaurant.name).toBe('Updated Restaurant Name');
-      expect(updatedRestaurant.cuisine).toEqual('Italian, Pizza, Pasta');
+      expect(updatedRestaurant.name).toBe('Updated Restaurant');
+      expect(updatedRestaurant.cuisine).toBe('Mexican');
+      expect(updatedRestaurant.isOpen).toBe(false);
     });
     
     test('should delete a restaurant from the database', async () => {
@@ -139,6 +250,84 @@ describe('Restaurant Model', () => {
       // Verify it's gone
       foundRestaurant = await Restaurant.findById(savedRestaurant._id);
       expect(foundRestaurant).toBeNull();
+    });
+  });
+  
+  describe('Menu Management', () => {
+    test('should add menu items to restaurant', async () => {
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [] // Start with empty menu
+      });
+      
+      // Add item
+      restaurant.menu.push(validMenuItemData);
+      await restaurant.save();
+      
+      // Verify item was added
+      const updatedRestaurant = await Restaurant.findById(restaurant._id);
+      expect(updatedRestaurant.menu.length).toBe(1);
+      expect(updatedRestaurant.menu[0].name).toBe(validMenuItemData.name);
+      
+      // Add another item
+      const secondItem = {
+        name: 'Second Item',
+        description: 'Another delicious item',
+        price: 14.99,
+        category: 'Dessert',
+        image: 'dessert.jpg'
+      };
+      
+      updatedRestaurant.menu.push(secondItem);
+      await updatedRestaurant.save();
+      
+      // Verify second item was added
+      const finalRestaurant = await Restaurant.findById(restaurant._id);
+      expect(finalRestaurant.menu.length).toBe(2);
+      expect(finalRestaurant.menu[1].name).toBe(secondItem.name);
+    });
+    
+    test('should update menu items in restaurant', async () => {
+      const restaurant = new Restaurant(validRestaurantData);
+      await restaurant.save();
+      
+      // Update menu item
+      restaurant.menu[0].price = 12.99;
+      restaurant.menu[0].isAvailable = false;
+      await restaurant.save();
+      
+      // Verify update
+      const updatedRestaurant = await Restaurant.findById(restaurant._id);
+      expect(updatedRestaurant.menu[0].price).toBe(12.99);
+      expect(updatedRestaurant.menu[0].isAvailable).toBe(false);
+    });
+    
+    test('should remove menu items from restaurant', async () => {
+      // Create restaurant with two menu items
+      const restaurant = new Restaurant({
+        ...validRestaurantData,
+        menu: [
+          validMenuItemData,
+          {
+            name: 'Second Item',
+            description: 'Another item',
+            price: 14.99,
+            category: 'Dessert'
+          }
+        ]
+      });
+      
+      await restaurant.save();
+      expect(restaurant.menu.length).toBe(2);
+      
+      // Remove first item
+      restaurant.menu.splice(0, 1);
+      await restaurant.save();
+      
+      // Verify item was removed
+      const updatedRestaurant = await Restaurant.findById(restaurant._id);
+      expect(updatedRestaurant.menu.length).toBe(1);
+      expect(updatedRestaurant.menu[0].name).toBe('Second Item');
     });
   });
 }); 

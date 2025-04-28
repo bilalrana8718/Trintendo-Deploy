@@ -57,6 +57,11 @@ export const loginCustomer = async (req, res) => {
   try {
     const { email, password } = req.body
 
+    // Validate email and password are provided
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" })
+    }
+
     // Find customer by email
     const customer = await Customer.findOne({ email })
     if (!customer) {
@@ -111,6 +116,11 @@ export const updateCustomerProfile = async (req, res) => {
     const customer = await Customer.findById(req.userId)
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" })
+    }
+
+    // Validate phone number format if provided
+    if (phone && !/^[0-9]{10,15}$/.test(phone)) {
+      return res.status(400).json({ message: "Invalid phone number format" })
     }
 
     customer.name = name || customer.name

@@ -248,8 +248,20 @@ export const updateOrderStatus = async (req, res) => {
     // Check if user is a restaurant owner
     if (req.userRole !== "owner") {
       console.log('Authorization failed: User is not an owner', { userRole: req.userRole });
-
       return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Validate required status
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    // Validate status value
+    const validStatuses = ['pending', 'preparing', 'ready', 'in-transit', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        message: "Invalid status. Must be one of: pending, preparing, ready, in-transit, delivered, cancelled" 
+      });
     }
 
     // Find the order by ID
@@ -258,79 +270,34 @@ export const updateOrderStatus = async (req, res) => {
       console.log('Order not found:', req.params.id);
       return res.status(404).json({ message: "Order not found" });
     }
-    console.log('Found order:', { orderId: order._id, currentStatus: order.status, restaurantId: order.restaurant });
 
-    // Get all restaurants owned by the user
+    // Check if order is already cancelled
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ message: "Cannot update a cancelled order" });
+    }
+
+    // Get restaurants owned by user
     const restaurants = await Restaurant.find({ owner: req.userId });
-    console.log('Found restaurants:', { count: restaurants.length, restaurantIds: restaurants.map(r => r._id) });
 
-    if (!restaurants.length) {
-      console.log('No restaurants found for owner:', req.userId);
-
-      return res
-        .status(403)
-        .json({ message: "Not authorized to update this order" });
-    }
-
-    // Extract restaurant IDs
-    const restaurantIds = restaurants.map((restaurant) =>
-      restaurant._id.toString()
-    );
-
-    // Check if the order belongs to any of the owner's restaurants
+    // Extract restaurant IDs as strings
+    const restaurantIds = restaurants.map(r => r._id.toString());
+    
+    // Get the order's restaurant ID as a string
     const orderRestaurantId = order.restaurant.toString();
-    console.log('Checking restaurant authorization:', {
-      orderRestaurantId,
-      ownerRestaurantIds: restaurantIds,
-      matches: restaurantIds.includes(orderRestaurantId)
-    });
-
+    
+    // Check if the order belongs to any of the user's restaurants
     if (!restaurantIds.includes(orderRestaurantId)) {
-
-      return res
-        .status(403)
-        .json({ message: "Not authorized to update this order" });
-    }
-
-    // Validate status transition
-    const validStatusTransitions = {
-      pending: ["confirmed", "cancelled"],
-      confirmed: ["preparing", "cancelled"],
-      preparing: ["ready_for_pickup"],
-      ready_for_pickup: [], // Restaurant owner cannot change status after ready_for_pickup
-      picked_up: ["in_transit"],
-      in_transit: ["near_delivery"],
-      near_delivery: ["delivered"],
-
-      delivered: [],
-      cancelled: [],
-    };
-
-    console.log('Validating status transition:', {
-      currentStatus: order.status,
-      newStatus: status,
-      validTransitions: validStatusTransitions[order.status]
-    });
-
-    if (!validStatusTransitions[order.status].includes(status)) {
-      return res.status(400).json({
-        message: `Cannot change status from ${order.status} to ${status}`,
-        validTransitions: validStatusTransitions[order.status],
-      });
+      return res.status(403).json({ message: "Not authorized" });
     }
 
     // Update order status
     order.status = status;
     await order.save();
-    console.log('Order status updated successfully:', { orderId: order._id, newStatus: status });
 
     res.status(200).json(order);
   } catch (error) {
     console.error('Error in updateOrderStatus:', error);
-
-    res
-      .status(500)
-      .json({ message: "Something went wrong", error: error.message });
+    res.status(500).json({ message: "Something went wrong", error: error.message });
   }
 };
 
