@@ -36,6 +36,13 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/rider", riderRoutes);
 
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  next();
+});
+
+
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI)
