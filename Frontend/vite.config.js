@@ -15,7 +15,7 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy" : "require-corp",
       "Cross-Origin-Opener-Policy" : "same-origin"
     },
-    port: 3000,
+    port: 5000,
     proxy: {
       "/api": {
         target: "http://localhost:5000",
