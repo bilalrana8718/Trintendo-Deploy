@@ -256,18 +256,19 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: "Status is required" });
     }
 
+    console.log('Status:', status);
     // Validate status value
-    const validStatuses = ['pending', 'preparing', 'ready', 'in-transit', 'delivered', 'cancelled'];
+    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'in-transit', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ 
-        message: "Invalid status. Must be one of: pending, preparing, ready, in-transit, delivered, cancelled" 
+        message: "Invalid status. Must be one of: pending, preparing, ready_for_pickup, in-transit, delivered, cancelled" 
       });
     }
 
     // Find the order by ID
     const order = await Order.findById(req.params.id);
     if (!order) {
-      console.log('Order not found:', req.params.id);
+      // console.log('Order not found:', req.params.id);
       return res.status(404).json({ message: "Order not found" });
     }
 
