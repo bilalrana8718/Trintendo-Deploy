@@ -35,7 +35,6 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/rider", riderRoutes);
-app.get('/health', (req, res) => res.send('API is healthy'));
 
 
 app.use((req, res, next) => {
@@ -43,8 +42,6 @@ app.use((req, res, next) => {
   res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   next();
 });
-
-
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI)
